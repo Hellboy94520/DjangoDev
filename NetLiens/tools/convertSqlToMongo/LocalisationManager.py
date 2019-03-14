@@ -1,7 +1,7 @@
 from NetLiensData.Category import *
-import Log
+from Log import *
 from tools.Network import isMongoDBClient, isSqlClient
-from tools.File import openFile
+from tools.File import *
 from NetLiensData.Localisation import *
 from NetLiensData.Statistique import StatistiqueData
 
@@ -14,7 +14,6 @@ def createContinentFromDictionnary(MongoTable, MongoTableStat):
 
   Log.info("BEGIN : Creation of CountinentData...")
 
-  ContinentDataList = []
   for name, code in ContinentFrCodeData.items():
     # Enregistrement des données
     lContinent = ContinentData()
@@ -24,12 +23,11 @@ def createContinentFromDictionnary(MongoTable, MongoTableStat):
     # Vérification des concordances entre les deux dictionnaires
     if lContinent.nameEn is None:
       Log.fatal(className, "Dictionnairy with name and code are not the same")
-      return None
+      return False
+
     # Enregistrement dans la base de donnée de l'objet
-    id = MongoTable.insert_one(lContinent.toTable())
-    MongoTableStat.insert_one(StatistiqueData(id))
-    # Enregistrement de l'objet
-    ContinentDataList.append(lContinent)
+    MongoTable.insert_one(lContinent.toTable())
+    MongoTableStat.insert_one(StatistiqueData(lContinent.id).toTable())
 
   Log.info("END : {} continents has been created".format(MongoTable.find().count()))
   return True
@@ -44,7 +42,7 @@ def createCountryFromInseeFile(MongoTable, MongoTableStat, pFile):
 
   lFile = openFile(pFile)
   if lFile is False:
-    return None
+    return False
 
   Lines = lFile.read().split("\n")
   # On ne garde pas la première ligne
@@ -63,8 +61,8 @@ def createCountryFromInseeFile(MongoTable, MongoTableStat, pFile):
       if result is not True:
         Log.warning(className, "Information is incorrect : {}".format(result))
       else:
-        id = MongoTable.insert_one(lCountryData.toTable())
-        MongoTableStat.insert_one(StatistiqueData(id))
+        MongoTable.insert_one(lCountryData.toTable())
+        MongoTableStat.insert_one(StatistiqueData(lCountryData.id).toTable())
 
   Log.info("END : {} countries has been created".format(MongoTable.find().count()))
   return True
@@ -79,7 +77,7 @@ def createFrRegionFromInseeFile(MongoTable, MongoTableStat, pFile, pParent, pChi
 
   lFile = openFile(pFile)
   if lFile is False:
-    return None
+    return False
 
   Lines = lFile.read().split("\n")
   # On ne garde pas la première ligne
@@ -98,8 +96,8 @@ def createFrRegionFromInseeFile(MongoTable, MongoTableStat, pFile, pParent, pChi
       if result is not True:
         Log.warning(className, "Information is incorrect : {}".format(result))
       else:
-        id = MongoTable.insert_one(lFrRegion.toTable())
-        MongoTableStat.insert_one(StatistiqueData(id))
+        MongoTable.insert_one(lFrRegion.toTable())
+        MongoTableStat.insert_one(StatistiqueData(lFrRegion.id).toTable())
 
   Log.info("END : {} FrRegions has been created".format(MongoTable.find().count()))
   return True
@@ -132,8 +130,8 @@ def createFrDepartmentFromInseeFile(MongoTable, MongoTableStat, pFile, pParentNa
       if result is not True:
         Log.warning(className, "Information is incorrect : {}".format(result))
       else:
-        id = MongoTable.insert_one(lFrDepartData.toTable())
-        MongoTableStat.insert_one(StatistiqueData(id))
+        MongoTable.insert_one(lFrDepartData.toTable())
+        MongoTableStat.insert_one(StatistiqueData(lFrDepartData.id).toTable())
 
   Log.info("END : {} FrDepartments has been created".format(MongoTable.find().count()))
   return True
@@ -147,7 +145,7 @@ def createFrCityFromInseeFile(MongoTable, MongoTableStat, pFile, pParentName):
 
   lFile = openFile(pFile)
   if lFile is False:
-    return None
+    return False
 
   Lines = lFile.read().split("\n")
   # On ne garde pas la première ligne
@@ -166,69 +164,69 @@ def createFrCityFromInseeFile(MongoTable, MongoTableStat, pFile, pParentName):
       if result is not True:
         Log.warning(className, "Information is incorrect : {}".format(result))
       else:
-        id = MongoTable.insert_one(lFrCityData.toTable())
-        MongoTableStat.insert_one(StatistiqueData(id))
+        lId = MongoTable.insert_one(lFrCityData.toTable())
+        MongoTableStat.insert_one(StatistiqueData(lId.inserted_id).toTable())
 
   Log.info("END : {} FrCities has been created".format(MongoTable.find().count()))
   return True
 
 
 """ ********************************************************************************************************************
-  CategoryManager
+  Creation of Data
 ******************************************************************************************************************** """
+def createLocalisationData(SqlClient, MongoClient, mongo_settings, settings):
+  Log.info("--------------------------------------------------------------------------------------------------------")
+  Log.info("BEGIN : Localisation data creation begin...")
 
-class LocalisationManager:
+  # Vérification de la connection SQL
+  if not isSqlClient(SqlClient):
+    return False
 
-  def __init__(self, SqlClient, MongoClient, mongo_settings, settings):
-    Log.info("--------------------------------------------------------------------------------------------------------")
-    Log.info("BEGIN : Localisation data creation begin...")
+  # Vérification de la connection MongoDB
+  if not isMongoDBClient(MongoClient):
+    return False
 
-    # Vérification de la connection SQL
-    if not isSqlClient(SqlClient):
-      return None
+  # Création des accès aux tables souhaitées
+  ContinentDataTable    = MongoClient.db[mongo_settings.get('LocalisationModel', 'continent')]
+  CountryDataTable      = MongoClient.db[mongo_settings.get('LocalisationModel', 'country'  )]
+  FrRegionDataTable     = MongoClient.db[mongo_settings.get('LocalisationModel', 'frregion' )]
+  FrDepartmentDataTable = MongoClient.db[mongo_settings.get('LocalisationModel', 'frdepart' )]
+  FrCityDataTable       = MongoClient.db[mongo_settings.get('LocalisationModel', 'frcity'   )]
+  ContinentStatTable    = MongoClient.db[mongo_settings.get('LocalisationModel', 'continentStat')]
+  CountryStatTable      = MongoClient.db[mongo_settings.get('LocalisationModel', 'countryStat'  )]
+  FrRegionStatTable     = MongoClient.db[mongo_settings.get('LocalisationModel', 'fraRegionStat' )]
+  FrDepartmentStatTable = MongoClient.db[mongo_settings.get('LocalisationModel', 'fraDepartStat' )]
+  FrCityStatTable       = MongoClient.db[mongo_settings.get('LocalisationModel', 'fraCityStat'   )]
 
-    # Vérification de la connection MongoDB
-    if not isMongoDBClient(MongoClient):
-      return None
+  # Récupération des noms de fichiers contenant les données
+  mainDir               = settings.get('LocalisationDirFiles', 'mainDir')
+  countryFileName       = mainDir + "/" + settings.get('LocalisationDirFiles', 'country')
+  frRegionFileName      = mainDir + "/" + settings.get('LocalisationDirFiles', 'frRegion')
+  frDepartmentFileName  = mainDir + "/" + settings.get('LocalisationDirFiles', 'frDepart')
+  frCityFileName        = mainDir + "/" + settings.get('LocalisationDirFiles', 'frCity')
 
-    # Création des accès aux tables souhaitées
-    ContinentDataTable    = MongoClient.db[mongo_settings.get('LocalisationModel', 'continent')]
-    CountryDataTable      = MongoClient.db[mongo_settings.get('LocalisationModel', 'country'  )]
-    FrRegionDataTable     = MongoClient.db[mongo_settings.get('LocalisationModel', 'frregion' )]
-    FrDepartmentDataTable = MongoClient.db[mongo_settings.get('LocalisationModel', 'frdepart' )]
-    FrCityDataTable       = MongoClient.db[mongo_settings.get('LocalisationModel', 'frcity'   )]
-    ContinentStatTable    = MongoClient.db[mongo_settings.get('LocalisationModel', 'continentStat')]
-    CountryStatTable      = MongoClient.db[mongo_settings.get('LocalisationModel', 'countryStat'  )]
-    FrRegionStatTable     = MongoClient.db[mongo_settings.get('LocalisationModel', 'frregionStat' )]
-    FrDepartmentStatTable = MongoClient.db[mongo_settings.get('LocalisationModel', 'frdepartStat' )]
-    FrCityStatTable       = MongoClient.db[mongo_settings.get('LocalisationModel', 'frcityStat'   )]
+  # Vérification si les fichiers existent
+  if not isExist(countryFileName)     : return False
+  if not isExist(frRegionFileName)    : return False
+  if not isExist(frDepartmentFileName): return False
+  if not isExist(frCityFileName)      : return False
 
-    mainDir               = settings.get('LocalisationDirFiles', 'mainDir')
-    countryFileName       = settings.get('LocalisationDirFiles', 'country')
-    frRegionFileName      = settings.get('LocalisationDirFiles', 'frRegion')
-    frDepartmentFileName  = settings.get('LocalisationDirFiles', 'frDepart')
-    frCityFileName        = settings.get('LocalisationDirFiles', 'frCity')
-
-    if not createContinentFromDictionnary(ContinentDataTable, ContinentStatTable):
-      return None
-
-    if not createCountryFromInseeFile(CountryDataTable, CountryStatTable, mainDir+"/"+countryFileName):
-      return None
-
-
-    if not createFrRegionFromInseeFile(FrRegionDataTable, FrRegionStatTable, mainDir+"/"+frRegionFileName,
+  # Créations des données
+  if not createContinentFromDictionnary(ContinentDataTable, ContinentStatTable)         : return False
+  if not createCountryFromInseeFile(CountryDataTable, CountryStatTable, countryFileName): return False
+  if not createFrRegionFromInseeFile(FrRegionDataTable, FrRegionStatTable, frRegionFileName,
                                        "FRA", mongo_settings.get('LocalisationModel', 'frdepart' )):
-      return None
+    return False
 
-    if not createFrDepartmentFromInseeFile(FrDepartmentDataTable, FrDepartmentStatTable, mainDir+"/"+frDepartmentFileName,
+  if not createFrDepartmentFromInseeFile(FrDepartmentDataTable, FrDepartmentStatTable, frDepartmentFileName,
                                            mongo_settings.get('LocalisationModel', 'frregion' ),
                                            mongo_settings.get('LocalisationModel', 'frcity' )):
-      return None
+    return False
 
-    if not createFrCityFromInseeFile(FrCityDataTable, FrCityStatTable, mainDir+"/"+frCityFileName,
+  if not createFrCityFromInseeFile(FrCityDataTable, FrCityStatTable, frCityFileName,
                                      mongo_settings.get('LocalisationModel', 'frdepart' )):
-      return None
+    return False
 
-    Log.info("END : Localisation data done")
-    Log.info("--------------------------------------------------------------------------------------------------------")
-
+  Log.info("END : Localisation data done")
+  Log.info("--------------------------------------------------------------------------------------------------------")
+  return True

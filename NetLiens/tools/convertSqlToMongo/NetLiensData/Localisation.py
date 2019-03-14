@@ -146,7 +146,7 @@ class FrCityData:
     return "name={}".format(self.name)
 
   def toTable(self):
-    return {"name": self.name,
+    return {"name"      : self.name,
             "parentId"  : self.parentId,
             "parentName": self.parentName}
 

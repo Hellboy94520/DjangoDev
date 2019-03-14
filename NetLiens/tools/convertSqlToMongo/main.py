@@ -1,7 +1,7 @@
 from SqlConnection import *
 from MongoDBClient import *
-from CategoryManager import CategoryManager
-from LocalisationManager import LocalisationManager
+from CategoryManager import createCategoryData
+from LocalisationManager import createLocalisationData
 import Log
 import os
 
@@ -35,16 +35,14 @@ NetLiensMongoDb = MongoDBClient(settings.get('mongodb_localhost', 'address'),
 
 """ --------------------------------------------------------------------------------------------------------------------
 CategoryManager
--------------------------------------------------------------------------------------------------------------------- 
-if not CategoryManager(NetLiensSqlNetwork, NetLiensMongoDb, mongodb_param):
-  exit(1)
-"""
+-------------------------------------------------------------------------------------------------------------------- """
+#if not createCategoryData(NetLiensSqlNetwork, NetLiensMongoDb, mongodb_param) : exit(1)
+
 
 """ --------------------------------------------------------------------------------------------------------------------
 LocalisationManager
 -------------------------------------------------------------------------------------------------------------------- """
-"""if not LocalisationManager(NetLiensSqlNetwork, NetLiensMongoDb, mongodb_param, settings):
-  exit(1)"""
+#if not createLocalisationData(NetLiensSqlNetwork, NetLiensMongoDb, mongodb_param, settings) : exit(1)
 
 """ --------------------------------------------------------------------------------------------------------------------
 ANNU_SITE & ANNU_SITE_APPARTIENT

@@ -133,50 +133,33 @@ def create_correctCategory(AnnuCatShow, CorrectCatTable, ErrorCatTable, StatCatD
 
 
 """ ********************************************************************************************************************
-   CategoryManager
+   Creation of Data
 ******************************************************************************************************************** """
-class CategoryManager:
+def createCategoryData(SQLClient, MongoClient, settings):
+  Log.info("--------------------------------------------------------------------------------------------------------")
+  Log.info("BEGIN : annu_cat to Category conversion...")
 
-  def __init__(self, SQLClient, MongoClient, settings):
+  annucat       = {}
+  annucatShow   = {}
+  annucatUnshow = {}
 
-    Log.info("--------------------------------------------------------------------------------------------------------")
-    Log.info("BEGIN : annu_cat to Category conversion...")
+  # Vérification de la connection SQL
+  if not isSqlClient(SQLClient): return None
 
-    annucat       = {}
-    annucatShow   = {}
-    annucatUnshow = {}
+  # Vérification de la connection MongoDB
+  if not isMongoDBClient(MongoClient): return None
 
-    # Vérification de la connection SQL
-    if not isSqlClient(SQLClient):
-      return None
-
-    # Vérification de la connection MongoDB
-    if not isMongoDBClient(MongoClient):
-      return None
-
-    # Création des accès aux tables souhaitées
-    ErrorCatTable     = MongoClient.db[settings.get('CategoryModel', 'dict1')]
-    CorrectCatTable   = MongoClient.db[settings.get('CategoryModel', 'dict2')]
-    StatCatTable      = MongoClient.db[settings.get('CategoryModel', 'dict3')]
+  # Création des accès aux tables souhaitées
+  ErrorCatTable     = MongoClient.db[settings.get('CategoryModel', 'dict1')]
+  CorrectCatTable   = MongoClient.db[settings.get('CategoryModel', 'dict2')]
+  StatCatTable      = MongoClient.db[settings.get('CategoryModel', 'dict3')]
 
 
 
-    if not getannu_catsFromSql(SQLClient, annucat):
-      return None
+  if not getannu_catsFromSql(SQLClient, annucat)                                          : return None
+  if not sortannu_cats(annucat, annucatShow, annucatUnshow)                               : return None
+  if not create_errorCategory(annucatUnshow, ErrorCatTable, StatCatTable)                 : return None
+  if not create_correctCategory(annucatShow, CorrectCatTable, ErrorCatTable, StatCatTable): return None
 
-    if not sortannu_cats(annucat, annucatShow, annucatUnshow):
-      return None
-
-    if not create_errorCategory(annucatUnshow, ErrorCatTable, StatCatTable):
-      return None
-
-    if not create_correctCategory(annucatShow, CorrectCatTable, ErrorCatTable, StatCatTable):
-      return None
-
-    Log.info("END : annu_cat to Category conversion done")
-    Log.info("--------------------------------------------------------------------------------------------------------")
-
-def deleteUselessData(self, MongoTable):
-  "On supprime l'id inutile de NetLiens"
-  mynew = ({"$set": {"resume": ""}})
-  MongoTable.update_many({}, mynew)
+  Log.info("END : annu_cat to Category conversion done")
+  Log.info("--------------------------------------------------------------------------------------------------------")
