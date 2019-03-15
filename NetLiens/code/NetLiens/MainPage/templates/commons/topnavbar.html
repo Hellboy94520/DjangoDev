@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+{% load static %} 
+	<meta charset="UTF-8">
+	<head>
+		<title>Net-Liens</title>
+		<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+		<!-- AdSense -->
+		<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+		<script>
+			 (adsbygoogle = window.adsbygoogle || []).push({
+				  google_ad_client: "ca-pub-0596828236496255",
+				  enable_page_level_ads: true
+			 });
+		</script>
+	</head>
+	
+	<body>
+		<!--------------------------------------------------------
+		Navbar 
+		--------------------------------------------------------->
+		<div class="w3-top">
+			  <div class="w3-bar w3-amber w3-card">
+				<a class="w3-bar-item w3-hover-black w3-button w3-padding-large w3-hide-large w3-right" href="javascript:void(0)" onclick="myFunction()" title="Menu"><i class="fa fa-bars"></i></a>
+				<a href="/">
+					<img class="w3-bar-item w3-hover-black w3-button w3-padding-medium" src="{%static 'images/net-liens.gif' %}" class="mainlogo"></img>
+				</a>
+				<!--<img id="home_gif" href="homepage" class="w3-bar-item w3-hover-black w3-button w3-padding-medium" src="{%static 'images/net-liens.gif' %}" class="mainlogo"></img> -->
+				<a href="/search" class="w3-bar-item w3-hover-black w3-button w3-padding-large w3-hide-small">Search</a>
+				<a href="/category" class="w3-bar-item w3-hover-black w3-button w3-padding-large w3-hide-small">Category</a>
+				<a href="http://www.loisirs-tourisme.com" target="_blankclass" class="w3-bar-item w3-blue w3-hover-black w3-button w3-padding-large w3-hide-medium w3-hide-small">Loisirs Tourisme</a>
+				
+					<!-- Right position in nav bar -->
+				<div class="w3-dropdown-hover w3-hide-medium w3-hide-small w3-right">
+				  <button class="w3-padding-large w3-hover-black w3-button" title="More">About <i class="fa fa-caret-down"></i></button>     
+				  <div class="w3-dropdown-content w3-amber w3-bar-block w3-card-4 w3-right" style="right: 0">
+					<a href="#AboutNetLiens" class="w3-bar-item w3-hover-black w3-button">About Net-Liens</a>
+					<a href="#AboutCharter" class="w3-bar-item w3-hover-black w3-button">About Charter</a>
+					<a href="#AboutAdds" class="w3-bar-item w3-hover-black w3-button">About adds</a>
+				  </div>
+				</div>
+				<a href="/contact" class="w3-bar-item w3-hover-black w3-button w3-padding-large w3-hide-medium w3-hide-small w3-right">Contact</a>
+				<a href="/signup" class="w3-bar-item w3-hover-black w3-button w3-padding-large w3-hide-small w3-right">Sign up</a>
+				<div class="w3-dropdown-hover w3-hide-small w3-right">
+				  <button class="w3-padding-large w3-hover-black w3-button" title="More">Sign in<i class="fa fa-caret-down"></i></button>     
+				  <div class="w3-dropdown-content w3-amber w3-bar-block w3-card-4">
+					<a href="#AboutNetLiens" class="w3-bar-item w3-hover-black w3-button">Username</a>
+					<a href="#AboutCharter" class="w3-bar-item w3-hover-black w3-button">Password</a>
+				  </div>
+				</div>
+				<a href="javascript:void(0)" class="w3-padding-large w3-hover-black w3-hide-large w3-hide-medium w3-right" title="Account"><i class="fa fa-user"></i></a>
+				<a href="javascript:void(0)" class="w3-padding-large w3-hover-black w3-hide-large w3-hide-medium w3-right" title="Search"><i class="fa fa-search"></i></a>
+				<a href="javascript:void(0)" class="w3-padding-large w3-hover-black w3-hide-large w3-hide-medium w3-right" title="Category"><i class="fa fa-folder"></i></a>
+			  </div>
+			</div>
+
+			<!-- Navbar on small screens (remove the onclick attribute if you want the navbar to always show on top of the content when clicking on the links) -->
+			<div id="navDemo" class="w3-bar-block w3-amber w3-hide w3-hide-large w3-top" style="margin-top:0px">
+				<a class="w3-bar-item w3-hover-black w3-button w3-padding-large" onclick="myFunction()"><i class="fa fa-bars"></i> Close Menu</a>
+				<a href="#loisirstourisme" class="w3-bar-item w3-blue w3-hover-black w3-button w3-padding-large" onclick="myFunction()">Loisirs Tourisme</a>
+				<a href="#contact" class="w3-bar-item w3-hover-black w3-button w3-padding-large" onclick="myFunction()">Contact</a>
+				<a href="#AboutNetLiens" class="w3-bar-item w3-hover-black w3-button w3-padding-large" onclick="myFunction()">About Net-Liens</a>
+				<a href="#AboutCharter" class="w3-bar-item w3-hover-black w3-button w3-padding-large" onclick="myFunction()">About Charter</a>
+				<a href="#AboutAdds" class="w3-bar-item w3-hover-black w3-button w3-padding-large" onclick="myFunction()">About Adds</a>
+			</div>
+		</div>
+	</body>
+
+	<!-- -------------------------------- SCRIPT  ------------------------------------------- -->
+	<script>
+	// Used to toggle the menu on small screens when clicking on the menu button
+	function myFunction() {
+		var x = document.getElementById("navDemo");
+		if (x.className.indexOf("w3-show") == -1) {
+			x.className += " w3-show";
+		} else { 
+			x.className = x.className.replace(" w3-show", "");
+		}
+	}	
+	</script>
+</html>

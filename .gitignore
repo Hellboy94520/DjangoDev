@@ -12,6 +12,11 @@ __pycache__/
 ### Django ###
 *.log
 *.pot
-*.pyc
+*.pac
 __pycache__/
+bin/
+include/
 local_settings.py
+
+.env
+db.sqlite3

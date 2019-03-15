@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+{% load static %} 
+<title>Net-Liens</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="{%static 'css/formula.css' %}">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+
+<head>
+
+</head>
+
+<body>
+	<!--------------------------------------------------------
+	Navbar 
+	--------------------------------------------------------->
+	{% include 'commons/topnavbar.html' %}
+	
+	
+	<!--------------------------------------------------------
+	Sign In 
+	--------------------------------------------------------->
+	<!-- Sign In for Large and Medium Screen -->
+	<form action="/action_page.php" class="w3-container w3-card-4 w3-light-grey w3-text-amber w3-hide-small" style="margin-top: 64px; margin-left: 11%; margin-right: 11%;"> 
+		<h2 class="w3-center">Sign In</h2>
+		<div class="w3-row-padding">
+			<div class="w3-half">
+				<div class="w3-row w3-section" placeholder="One">
+					<div id="col_row_half" class="w3-col"><i class="w3-xxlarge fa fa-user"></i></div>
+					<div class="w3-rest">
+						<input class="w3-input w3-border" name="last" type="text" placeholder="Last Name">
+					</div>
+				</div>
+			</div>
+			<div class="w3-half">
+				<div class="w3-row w3-section" placeholder="Two">
+					<div id="col_row_half" class="w3-col"><i class="w3-xxlarge fa fa-user"></i></div>
+					<div class="w3-rest">
+					  <input class="w3-input w3-border" name="first" type="text" placeholder="First Name">
+					</div>
+				</div>
+			</div>
+			<div class="w3-row w3-section">
+				<div id="col_row" class="w3-col"><i class="w3-xxlarge fa fa-user"></i></div>
+				<div class="w3-rest">
+				  <input class="w3-input w3-border" name="first" type="text" placeholder="User Name">
+				</div>
+			</div>
+			<div class="w3-row w3-section">
+				<div id="col_row" class="w3-col"><i class="w3-xxlarge fa fa-envelope"></i></div>
+				<div class="w3-rest">
+				  <input class="w3-input w3-border" name="mail" type="text" placeholder="Email">
+				</div>
+			</div> 
+			<div class="w3-row w3-section">
+				<div id="col_row" class="w3-col"><i class="w3-xxlarge fa fa-lock"></i></div>
+				<div class="w3-rest">
+				  <input class="w3-input w3-border" name="password" type="text" placeholder="Password">
+				</div>
+			</div> <!-- w3-row -->
+			<div class="w3-row w3-section">
+				<div id="col_row" class="w3-col"><i class="w3-xxlarge fa fa-building"></i></div>
+				<div class="w3-rest">
+				  <input class="w3-input w3-border" name="company" type="text" placeholder="Company Name">
+				</div>
+			</div><!-- w3-row -->
+			
+			<button id="register_button" class="w3-btn w3-amber">Register</button>
+			
+		</div><!-- w3-row-padding -->
+	</form>
+	<!-- Sign In for Small Screen -->
+	<form action="/action_page.php" class="w3-container w3-card-4 w3-light-grey w3-text-amber w3-hide-large w3-hide-medium" style="margin-top: 64px; margin-left: 1%; margin-right: 1%;"> 
+		<h2 class="w3-center">Sign In</h2>
+		<div class="w3-row-padding">
+				<div class="w3-row w3-section" placeholder="One">
+					<div id="col_row" class="w3-col"><i class="w3-xxlarge fa fa-user"></i></div>
+					<div class="w3-rest">
+						<input class="w3-input w3-border" name="first" type="text" placeholder="First Name">
+					</div>
+				</div>
+				<div class="w3-row w3-section" placeholder="Two">
+					<div id="col_row" class="w3-col"><i class="w3-xxlarge fa fa-user"></i></div>
+					<div class="w3-rest">
+					  <input class="w3-input w3-border" name="last" type="text" placeholder="Last Name">
+					</div>
+				</div>
+	
+			<div class="w3-row w3-section">
+				<div id="col_row" class="w3-col"><i class="w3-xxlarge fa fa-envelope"></i></div>
+				<div class="w3-rest">
+				  <input class="w3-input w3-border" name="mail" type="text" placeholder="Email">
+				</div>
+			</div> <!-- w3-row -->
+			<div class="w3-row w3-section">
+				<div id="col_row" class="w3-col"><i class="w3-xxlarge fa fa-lock"></i></div>
+				<div class="w3-rest">
+				  <input class="w3-input w3-border" name="password" type="text" placeholder="Password">
+				</div>
+			</div> <!-- w3-row -->
+			<div class="w3-row w3-section">
+				<div id="col_row" class="w3-col"><i class="w3-xxlarge fa fa-building"></i></div>
+				<div class="w3-rest">
+				  <input class="w3-input w3-border" name="company" type="text" placeholder="Company Name">
+				</div>
+			</div><!-- w3-row -->
+
+			<button id="register_button" class="w3-btn w3-amber">Register</button>
+
+		</div><!-- w3-row-padding -->
+	</form>
+
+	
+	
+	
+<!-- -------------------------------- SCRIPT  ------------------------------------------- -->
+	<script>
+	// Used to toggle the menu on small screens when clicking on the menu button
+function myFunction() {
+    var x = document.getElementById("navDemo");
+    if (x.className.indexOf("w3-show") == -1) {
+        x.className += " w3-show";
+    } else { 
+        x.className = x.className.replace(" w3-show", "");
+    }
+}	
+</script>
+
+</body>
