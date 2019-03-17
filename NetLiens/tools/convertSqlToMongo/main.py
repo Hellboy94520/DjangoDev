@@ -1,7 +1,7 @@
 from SqlConnection import *
 from MongoDBClient import *
 from CategoryManager import createCategoryData
-from LocalisationManager import createLocalisationData
+from LocalisationManager import createLocalisationData, getEquivalenceLocalisation
 import Log
 import os
 
@@ -30,8 +30,8 @@ NetLiensSqlNetwork = SqlConnection(settings.get('sql_localhost', 'address'),
                                    settings.get('sql_localhost', 'databasename'))
 
 NetLiensMongoDb = MongoDBClient(settings.get('mongodb_localhost', 'address'),
-                              settings.get('mongodb_localhost', 'port'),
-                              "NetLiens")
+                                settings.get('mongodb_localhost', 'port'),
+                                "NetLiens")
 
 """ --------------------------------------------------------------------------------------------------------------------
 CategoryManager
@@ -42,13 +42,17 @@ CategoryManager
 """ --------------------------------------------------------------------------------------------------------------------
 LocalisationManager
 -------------------------------------------------------------------------------------------------------------------- """
-#if not createLocalisationData(NetLiensSqlNetwork, NetLiensMongoDb, mongodb_param, settings) : exit(1)
+#if not createLocalisationData(NetLiensMongoDb, mongodb_param, settings) : exit(1)
 
 """ --------------------------------------------------------------------------------------------------------------------
 ANNU_SITE & ANNU_SITE_APPARTIENT
 -------------------------------------------------------------------------------------------------------------------- """
-# Site = SiteManager()
-# Site.get_annu_site(NetLiensSqlNetwork)
+sites = NetLiensSqlNetwork.set_command("SELECT * FROM `annu_site`")
+for site in sites:
+  cat = NetLiensSqlNetwork.set_command("SELECT * from `annu_dept` WHERE `id_dept`={}".format(site[11]))
+  if len(cat) != 0:
+    if getEquivalenceLocalisation(cat[0][0], cat[0][1], NetLiensSqlNetwork, NetLiensMongoDb, mongodb_param) is False:
+      print("No found : {}".format(cat))
 
 
 """ Association des Sites avec les catégories ----------------------------------------------------------------------"""

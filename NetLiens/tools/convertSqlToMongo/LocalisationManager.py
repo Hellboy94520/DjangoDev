@@ -174,13 +174,9 @@ def createFrCityFromInseeFile(MongoTable, MongoTableStat, pFile, pParentName):
 """ ********************************************************************************************************************
   Creation of Data
 ******************************************************************************************************************** """
-def createLocalisationData(SqlClient, MongoClient, mongo_settings, settings):
+def createLocalisationData(MongoClient, mongo_settings, settings):
   Log.info("--------------------------------------------------------------------------------------------------------")
   Log.info("BEGIN : Localisation data creation begin...")
-
-  # Vérification de la connection SQL
-  if not isSqlClient(SqlClient):
-    return False
 
   # Vérification de la connection MongoDB
   if not isMongoDBClient(MongoClient):
@@ -230,3 +226,108 @@ def createLocalisationData(SqlClient, MongoClient, mongo_settings, settings):
   Log.info("END : Localisation data done")
   Log.info("--------------------------------------------------------------------------------------------------------")
   return True
+
+
+""" ********************************************************************************************************************
+  Return the equivalence betwwen old and new database
+******************************************************************************************************************** """
+def getEquivalenceLocalisation(pCatId, pName, SqlClient, MongoClient, mongo_settings):
+  if type(pCatId) is not int:
+    Log.error(className, "pCatId is not an int")
+    return False
+  if type(pName) is not str:
+    Log.error(className, "pName is not a str")
+    return False
+
+  # Département
+  if 0 <= pCatId < 100 or 971 <= pCatId < 999:
+    FrDepartmentTable = MongoClient.db[mongo_settings.get('LocalisationModel', 'frdepart')]
+    # On cherche le nouvel Id dans MongoDb
+    result = FrDepartmentTable.find({"name": pName})
+    if result.count() == 1:
+      return {mongo_settings.get('LocalisationModel', 'frdepart'), result.next().get("_id")}
+    # Si plusieurs résultats, on cherche des possibilitées
+    if result.count() != 1:
+      # Dans le cas de la Corse, on met la région car pas de distinction entre Nord et Sud avant
+      if pName=="Corse":
+        FrRegionDataTable = MongoClient.db[mongo_settings.get('LocalisationModel', 'frregion')]
+        # On cherche le nouvel Id dans MongoDb
+        result = FrRegionDataTable.find({"name": "Corse"})
+        # Si un seul résultat
+        if result.count() == 1:
+          return {mongo_settings.get('LocalisationModel', 'frregion'), result.next().get("_id")}
+      # Dans le cas des Alpes Hautes Provinces
+      elif pName=="Alpes de Hautes-Provence":
+        # On cherche le nouvel Id dans MongoDb
+        result = FrDepartmentTable.find({"name": "Alpes-de-Haute-Provence"})
+        if result.count() == 1:
+          return {mongo_settings.get('LocalisationModel', 'frdepart'), result.next().get("_id")}
+      # Dans le cas des Côtes-d'Armor
+      elif pName=="Côtes d'Armor":
+        # On cherche le nouvel Id dans MongoDb
+        result = FrDepartmentTable.find({"name": "Côtes-d'Armor"})
+        if result.count() == 1:
+          return {mongo_settings.get('LocalisationModel', 'frdepart'), result.next().get("_id")}
+      # Dans le cas de la Réunion
+      elif pName=="Réunion":
+        # On cherche le nouvel Id dans MongoDb
+        result = FrDepartmentTable.find({"name": "La Réunion"})
+        if result.count() == 1:
+          return {mongo_settings.get('LocalisationModel', 'frdepart'), result.next().get("_id")}
+      # Dans le cas de la Guyane
+      elif pName == "Antilles-Guyanne":
+        # On cherche le nouvel Id dans MongoDb
+        result = FrDepartmentTable.find({"name": "Guyane"})
+        if result.count() == 1:
+          return {mongo_settings.get('LocalisationModel', 'frdepart'), result.next().get("_id")}
+
+    # Si rien n'a été trouvé
+    Log.error(className, "Impossible to found the Department named {}".format(pName))
+    return False
+
+
+  # France
+  elif pCatId == 201:
+    CountryTable = MongoClient.db[mongo_settings.get('LocalisationModel', 'country')]
+    result = CountryTable.find({"nameFr":"France"})
+    if result.count() != 1:
+      Log.error(className, "Impossible to find France country !")
+      return False
+    return {mongo_settings.get('LocalisationModel', 'country'), result.next().get("_id")}
+
+  # Continents (ici on fait à la main)
+  elif 201 < pCatId <= 208:
+    result = ""
+    ContinentDataTable = MongoClient.db[mongo_settings.get('LocalisationModel', 'continent')]
+    if pCatId == 202:
+      result = ContinentDataTable.find({"nameFr": "Europe"}           ).next().get("_id", None)
+    elif pCatId == 203:
+      result = ContinentDataTable.find({"nameFr": "Amérique du Nord"} ).next().get("_id", None)
+    elif pCatId == 204:
+      result = ContinentDataTable.find({"nameFr": "Amérique du Sud"}  ).next().get("_id", None)
+    elif pCatId == 205 and pCatId == 206:
+      result = ContinentDataTable.find({"nameFr": "Afrique"}          ).next().get("_id", None)
+    elif pCatId == 207:
+      result = ContinentDataTable.find({"nameFr": "Asie"}             ).next().get("_id", None)
+    elif pCatId == 208:
+      result = ContinentDataTable.find({"nameFr": "Océanie"}          ).next().get("_id", None)
+    # On vérifie le résultat
+    if result is None:
+      Log.error(className, "Impossible to found the continent named {}".format(pName))
+      return False
+    return {mongo_settings.get('LocalisationModel', 'continent'), result}
+
+  # Région Françaises
+  elif 300 < pCatId <= 399 :
+    FrRegionDataTable = MongoClient.db[mongo_settings.get('LocalisationModel', 'frregion')]
+    # On cherche le nouvel Id dans MongoDb
+    result = FrRegionDataTable.find({"name": pName})
+    # Si un seul résultat
+    if result.count() == 1:
+      return {mongo_settings.get('LocalisationModel', 'frregion'), result.next().get("_id")}
+
+    Log.error(className, "Impossible to find this region named {}".format(pName))
+    return False
+
+  return False
+
