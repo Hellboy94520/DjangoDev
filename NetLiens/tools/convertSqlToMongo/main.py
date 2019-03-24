@@ -36,7 +36,7 @@ NetLiensMongoDb = MongoDBClient(settings.get('mongodb_localhost', 'address'),
 """ --------------------------------------------------------------------------------------------------------------------
 CategoryManager
 -------------------------------------------------------------------------------------------------------------------- """
-#if not createCategoryData(NetLiensSqlNetwork, NetLiensMongoDb, mongodb_param) : exit(1)
+if not createCategoryData(NetLiensSqlNetwork, NetLiensMongoDb, mongodb_param) : exit(1)
 
 
 """ --------------------------------------------------------------------------------------------------------------------
@@ -47,13 +47,14 @@ LocalisationManager
 """ --------------------------------------------------------------------------------------------------------------------
 ANNU_SITE & ANNU_SITE_APPARTIENT
 -------------------------------------------------------------------------------------------------------------------- """
+"""
 sites = NetLiensSqlNetwork.set_command("SELECT * FROM `annu_site`")
 for site in sites:
   cat = NetLiensSqlNetwork.set_command("SELECT * from `annu_dept` WHERE `id_dept`={}".format(site[11]))
   if len(cat) != 0:
     if getEquivalenceLocalisation(cat[0][0], cat[0][1], NetLiensSqlNetwork, NetLiensMongoDb, mongodb_param) is False:
       print("No found : {}".format(cat))
-
+"""
 
 """ Association des Sites avec les catégories ----------------------------------------------------------------------"""
 # Site.site_category_association(NetLiensSqlNetwork, Category.categories)

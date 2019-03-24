@@ -229,7 +229,7 @@ def createLocalisationData(MongoClient, mongo_settings, settings):
 
 
 """ ********************************************************************************************************************
-  Return the equivalence betwwen old and new database
+  Return the equivalence between old and new database
 ******************************************************************************************************************** """
 def getEquivalenceLocalisation(pCatId, pName, SqlClient, MongoClient, mongo_settings):
   if type(pCatId) is not int:

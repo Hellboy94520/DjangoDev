@@ -28,7 +28,7 @@ class CategoryData:
 
   """ -- Affichage de l'object ------------------------------------------------------------------------------------- """
   def __repr__(self):
-    return "id= {}, {} {} : {}\n".format(self.id, self.name, self.parent, self.resume)
+    return "id= {}, {} {} : {}\n".format(self.id, self.nameFr, self.parent, self.resume)
 
   def toTable(self):
     return {"nameFr" : self.nameFr,
