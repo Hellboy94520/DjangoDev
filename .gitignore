@@ -16,6 +16,7 @@ __pycache__/
 __pycache__/
 bin/
 include/
+migrations/
 local_settings.py
 
 .env
