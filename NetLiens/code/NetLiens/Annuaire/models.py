@@ -13,7 +13,6 @@ userSizeMax = 100
 """ --------------------------------------------------------------------------------------------------------------------
 Category
 -------------------------------------------------------------------------------------------------------------------- """
-#TODO: Voir si je regroupe pas tous dans CategoryData
 class CategoryStat(models.Model):
   creationDate  = models.DateTimeField(default=datetime.datetime.now())
   lastModDate   = models.DateTimeField(default=datetime.datetime.now())
@@ -24,20 +23,14 @@ class CategoryStat(models.Model):
   last1dConsu   = models.IntegerField(default=0)
   
 
-class CategoryData(models.Model):
+class Category(models.Model):
   nameFr    = models.CharField(max_length=nameSizeMax, default="")
   nameEn    = models.CharField(max_length=nameSizeMax, default="")
   resumeFr  = models.TextField(default="")
   resumeEn  = models.TextField(default="")
-  #stat      = models.OneToOneField(CategoryStat, on_delete=models.CASCADE, primary_key=True)
+  stat      = models.OneToOneField(CategoryStat, on_delete=models.CASCADE, primary_key=True)
+  children  = models.ManyToManyField('self', related_name='ChildrenCategory')
 
-class Category(models.Model):
-  data    = models.ForeignKey(CategoryData, related_name="CategoryData", on_delete=models.CASCADE)
-  stat    = models.ForeignKey(CategoryStat, related_name="CategoryStat", on_delete=models.CASCADE)
-  children= models.ManyToManyField("Category", related_name="ChildrenCategory")
-
-  def __str__(self):
-    return self.data.nameFr
 
 
 """ --------------------------------------------------------------------------------------------------------------------
@@ -53,7 +46,7 @@ class LocalisationStat(models.Model):
   last1dConsu   = models.IntegerField(default=0)
 
 
-class LocalisationCityData(models.Model):
+class LocalisationCity(models.Model):
   name          = models.CharField(max_length=nameSizeMax)
   stat          = models.OneToOneField(LocalisationStat, on_delete=models.CASCADE, primary_key=True)
 
@@ -61,42 +54,42 @@ class LocalisationCityData(models.Model):
     return "Name={}".format(self.name)
 
 
-class LocalisationDepartmentData(models.Model):
+class LocalisationDepartment(models.Model):
   name          = models.CharField(max_length=nameSizeMax)
   code          = models.SmallIntegerField()
-  children      = models.ManyToManyField(LocalisationCityData)
+  children      = models.ManyToManyField(LocalisationCity)
   stat          = models.OneToOneField(LocalisationStat, on_delete=models.CASCADE, primary_key=True)
 
   def __repr__(self):
     return "Name={}, number={}".format(self.name, self.number)
 
 
-class LocalisationRegionData(models.Model):
+class LocalisationRegion(models.Model):
   name          = models.CharField(max_length=nameSizeMax)
   code          = models.SmallIntegerField()
-  children      = models.ManyToManyField(LocalisationDepartmentData)
+  children      = models.ManyToManyField(LocalisationDepartment)
   stat          = models.OneToOneField(LocalisationStat, on_delete=models.CASCADE, primary_key=True)
 
   def __repr__(self):
     return "Name={}, number={}".format(self.name, self.number)
 
 
-class LocalisationCountryData(models.Model):
+class LocalisationCountry(models.Model):
   nameFr        = models.CharField(max_length=nameSizeMax)
   nameEn        = models.CharField(max_length=nameSizeMax)
   code          = models.CharField(max_length=3)
-  children      = models.ManyToManyField(LocalisationRegionData)
+  children      = models.ManyToManyField(LocalisationRegion)
   stat          = models.OneToOneField(LocalisationStat, on_delete=models.CASCADE, primary_key=True)
 
   def __repr__(self):
     return "NameFr={}, code={}".format(self.nameEn, self.code)
 
 
-class LocalisationContinentData(models.Model):
+class LocalisationContinent(models.Model):
   nameFr        = models.CharField(max_length=nameSizeMax)
   nameEn        = models.CharField(max_length=nameSizeMax)
   code          = models.CharField(max_length=3)
-  children      = models.ManyToManyField(LocalisationCountryData)
+  children      = models.ManyToManyField(LocalisationCountry)
   stat          = models.OneToOneField(LocalisationStat, on_delete=models.CASCADE, primary_key=True)
 
   def __repr__(self):
