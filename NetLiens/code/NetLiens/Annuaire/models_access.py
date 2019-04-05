@@ -7,7 +7,10 @@ lClassName = "models_access"
 """ --------------------------------------------------------------------------------------------------------------------
 Category
 -------------------------------------------------------------------------------------------------------------------- """
+
+
 def create_category(pNameFr, pNameEn, pResumeFr, pResumeEn):
+
   lFunctionName = "create_category"
 
   if type(pNameFr) is not str:    return error_message(lClassName, lFunctionName, "pNameFr is not a str")
@@ -26,14 +29,16 @@ def create_category(pNameFr, pNameEn, pResumeFr, pResumeEn):
   lCategory.stat     = lCategoryStat
   lCategory.save()
 
-
   return lCategory
 
 
 """ --------------------------------------------------------------------------------------------------------------------
 Localisation
 -------------------------------------------------------------------------------------------------------------------- """
+
+
 def create_continent(pNameFr, pNameEn, pCode):
+
   lFunctionName = "create_continent"
 
   if type(pNameFr) is not str: return error_message(lClassName, lFunctionName, "pNameFr is not a str")
@@ -63,7 +68,10 @@ def create_continent(pNameFr, pNameEn, pCode):
 
 
 """ ---------------------------------------------------------------------------------------------------------------- """
+
+
 def create_country(pNameFr, pNameEn, pCode, pContinentNameFr):
+
   lFunctionName = "create_country"
 
   if type(pNameFr)          is not str: return error_message(lClassName, lFunctionName, "pNameFr is not a str")
@@ -108,11 +116,14 @@ def create_country(pNameFr, pNameEn, pCode, pContinentNameFr):
 
 
 """ ---------------------------------------------------------------------------------------------------------------- """
+
+
 def create_region(pName, pCode, pCountryNameFr):
+
   lFunctionName = "create_region"
 
   if type(pName)          is not str: return error_message(lClassName, lFunctionName, "pNameFr is not a str")
-  if type(pCode)          is not str: return error_message(lClassName, lFunctionName, "pNameEn is not a str")
+  if type(pCode)          is not str: return error_message(lClassName, lFunctionName, "pCode is not a str")
   if type(pCountryNameFr) is not str: return error_message(lClassName, lFunctionName, "pCountryName is not a str")
 
   if LocalisationRegion.objects.filter(name=pName).count() != 0:
@@ -121,7 +132,7 @@ def create_region(pName, pCode, pCountryNameFr):
     return error_message(lClassName, lFunctionName, "Region with Code \"{}\" already exist".format(pCode))
 
   try:
-    lParent = LocalisationRegion.objects.get(name=pCountryNameFr)
+    lParent = LocalisationCountry.objects.get(nameFr=pCountryNameFr)
   except ObjectDoesNotExist:
     return error_message(lClassName, lFunctionName, "Impossible to find Country with nameFr={}"
                          .format(pCountryNameFr))
@@ -142,3 +153,29 @@ def create_region(pName, pCode, pCountryNameFr):
 
   lParent.children.add(lRegion)
   lParent.save()
+
+  return lRegion
+
+
+""" ---------------------------------------------------------------------------------------------------------------- """
+
+
+def create_departement(pName, pCode, pRegionName):
+
+  lFunctionName = "create_departement"
+
+  if type(pName)          is not str: return error_message(lClassName, lFunctionName, "pNameFr is not a str")
+  if type(pCode)          is not str: return error_message(lClassName, lFunctionName, "pCode is not a str")
+  if type(pRegionName)    is not str: return error_message(lClassName, lFunctionName, "pRegionName is not a str")
+
+  if LocalisationRegion.objects.filter(name=pName).count() != 0:
+    return error_message(lClassName, lFunctionName, "Departement with Name \"{}\" already exist".format(pName))
+  if LocalisationRegion.objects.filter(code=pCode).count() != 0:
+    return error_message(lClassName, lFunctionName, "Departement with Code \"{}\" already exist".format(pCode))
+
+  try:
+    lParent = LocalisationRegion.objects.get(name=pRegionName)
+  except ObjectDoesNotExist:
+    return error_message(lClassName, lFunctionName, "Departement with Name ")
+
+
