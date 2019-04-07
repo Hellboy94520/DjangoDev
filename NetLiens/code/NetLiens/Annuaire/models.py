@@ -1,14 +1,13 @@
 from django.db import models
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-import datetime
+from django.contrib.auth.models import User
+from datetime import datetime, timedelta
+from uuid import uuid4
 
 UserMaxSize     = 100
 CategorySize    = 30
 PaypalRefSize   = 20
 SiteTitleSize   = 50
 
-# Create your models here.
 
 """ --------------------------------------------------------------------------------------------------------------------
 Category
@@ -16,9 +15,9 @@ Category
 
 
 class CategoryStat(models.Model):
-    creationDate  = models.DateTimeField(default=datetime.datetime.now())
+    creationDate  = models.DateTimeField(default=datetime.now())
     creationUser  = models.CharField(max_length=CategorySize, default="creation")
-    lastModDate   = models.DateTimeField(default=datetime.datetime.now())
+    lastModDate   = models.DateTimeField(default=datetime.now())
     lastModUser   = models.CharField(max_length=CategorySize, default="")
     last1yConsu   = models.IntegerField(default=0)
     last1mConsu   = models.IntegerField(default=0)
@@ -56,9 +55,9 @@ Localisation
 
 
 class LocalisationStat(models.Model):
-    creationDate  = models.DateTimeField(default=datetime.datetime.now())
+    creationDate  = models.DateTimeField(default=datetime.now())
     creationUser  = models.CharField(max_length=UserMaxSize, default="creation")
-    lastModDate   = models.DateTimeField(default=datetime.datetime.now())
+    lastModDate   = models.DateTimeField(default=datetime.now())
     lastModUser   = models.CharField(max_length=UserMaxSize, default="")
     last1yConsu   = models.IntegerField(default=0)
     last1mConsu   = models.IntegerField(default=0)
@@ -132,7 +131,6 @@ class NLPurchase(models.Model):
 
 class PaypalPayment(models.Model):
     reference     = models.CharField(max_length=PaypalRefSize)
-    details       = models.TextField()
 
     def __repr__(self):
         return "PaypalPayment : {}".format(self.reference)
@@ -141,7 +139,9 @@ class PaypalPayment(models.Model):
 class Payment(models.Model):
     reference     = models.CharField(max_length=20)
     sum           = models.DecimalField(max_digits=7, decimal_places=2)
+    datetime      = models.DateTimeField()
     purchase      = models.ForeignKey(NLPurchase, on_delete=models.CASCADE)
+    details       = models.TextField()
 
     UNKNOWN   = 'UN'
     GIFT      = 'GI'
@@ -238,9 +238,9 @@ Site
 
 
 class SiteStat(models.Model):
-    creationDate  = models.DateTimeField(default=datetime.datetime.now())
+    creationDate  = models.DateTimeField(default=datetime.now())
     creationUser  = models.CharField(max_length=UserMaxSize, default="creation")
-    lastModDate   = models.DateTimeField(default=datetime.datetime.now())
+    lastModDate   = models.DateTimeField(default=datetime.now())
     lastModUser   = models.CharField(max_length=UserMaxSize, default="null")
     last1yConnect = models.IntegerField(default=0)
     last1mConnect = models.IntegerField(default=0)
@@ -267,7 +267,7 @@ class Report(models.Model):
     sender        = models.CharField(max_length=UserMaxSize, default="null")
     title         = models.CharField(max_length=2, choices=TITLE_POSSIBILITY, default=UNKNOWN)
     content       = models.TextField(max_length=50)
-    date          = models.DateTimeField(default=datetime.datetime.now())
+    date          = models.DateTimeField(default=datetime.now())
 
     def __repr__(self):
         return "Report : sendBy={}, date={}, title={}, content={}".format(self.sender, self.date, self.title,
@@ -293,88 +293,21 @@ class Site(models.Model):
 """ --------------------------------------------------------------------------------------------------------------------
 Account
 -------------------------------------------------------------------------------------------------------------------- """
+class AccountActivation(models.Model):
+    link          = models.SlugField(default=uuid4(), max_length=20, unique=True)
+    expiration    = models.DateTimeField(default=datetime.now()+timedelta(days=7))
 
 
-class AccountStat(models.Model):
-    creationDate  = models.DateTimeField(default=datetime.datetime.now())
-    creationUser  = models.CharField(max_length=UserMaxSize, default="creation")
-    lastModDate   = models.DateTimeField(default=datetime.datetime.now())
-    lastModUser   = models.CharField(max_length=UserMaxSize, default="null")
-    last1yConnect = models.IntegerField(default=0)
-    last1mConnect = models.IntegerField(default=0)
-    last1wConnect = models.IntegerField(default=0)
-    last1dConnect = models.IntegerField(default=0)
+class Account(models.Model):
+    # TODO: Voir pour les permissions
+    """ link OneToOne to the User model (username, first_name, last_name, email, password, is_staff, is_active,
+    is_superuser, last_login, date_joined, user_permissions, groups """
+    user          = models.OneToOneField(User)
 
-
-class AccountData(models.Model):
-    email         = models.EmailField(unique=True)
-    username      = models.CharField(unique=True, max_length=30)
-    # TODO: A changer pour le crypter
-    password      = models.CharField(max_length=50)
-    name          = models.CharField(max_length=50)
-    familyname    = models.CharField(max_length=50)
     company       = models.CharField(max_length=50)
-    sites         = models.ForeignKey(Site, null=True, on_delete=models.CASCADE)
+    activation    = models.ForeignKey(AccountActivation     , null=True, default=models.SET_NULL,
+                                      on_delete=models.CASCADE)
+    sites         = models.ForeignKey(Site                  , null=True, on_delete=models.CASCADE)
     messages      = models.ManyToManyField(Message)
-    notification  = models.ForeignKey(NotificationCustomer, null=True, on_delete=models.CASCADE)
-    payment       = models.ForeignKey(Payment, null=True, on_delete=models.CASCADE)
-    stat          = models.OneToOneField(AccountStat, on_delete=models.CASCADE, primary_key=True)
-
-    class Meta:
-      abstract = True
-
-
-# Correct account
-class Account(AccountData):
-
-    def __repr__(self):
-        return "Account : {} - {}".format(self.email, self.username)
-
-
-# Account waiting to be validate with the link sent to the address
-class AccountUnvalidate(AccountData):
-    # Link to validate the account (www.netliens.com/validate/XXXXXXXXXX)
-    link          = models.CharField(max_length=10)
-
-    def __repr__(self):
-        return "AccountUnvalidate : {} - {} - {}".format(self.email, self.username, self.link)
-
-
-# Unactive Account
-class AccountUnactive(AccountData):
-    # Reason of unactive account (blocked, unactive, etc...)
-    UNKNOWN     = 'UN'
-    BLOCKED     = 'BL'
-    UNACTIVE    = 'UA'
-    UNACTIVE_REASON = ( (UNKNOWN    , 'null'        ),
-                        (BLOCKED    , 'Blocked'     ),
-                        (UNACTIVE   , 'Unactive'    )
-                      )
-
-    reason        = models.CharField(max_length=2, choices=UNACTIVE_REASON, default=UNKNOWN)
-    details       = models.TextField(max_length=50, default="")
-
-    def __repr__(self):
-        return "AccountUnactive : {} - {} - reason={}".format(self.email, self.username, self.reason)
-
-
-class AccountAdmin(models.Model):
-    # Administrator rules
-    UNKNOWN     = 'UN'
-    CONSULT     = 'CO'
-    VALIDATION  = 'VA'
-    ALL         = 'AL'
-    ADMIN_STATUS    = ( (UNKNOWN    , 'null'        ),
-                        (CONSULT    , 'Consult'     ),
-                        (VALIDATION , 'Validation'  ),
-                        (ALL        , 'All'         )
-                      )
-
-    email         = models.EmailField(unique=True)
-    username      = models.CharField(unique=True, max_length=UserMaxSize)
-    # TODO: A changer pour le crypter
-    password      = models.CharField(max_length=50)
-    status        = models.CharField(max_length=2, choices=ADMIN_STATUS, default=UNKNOWN)
-
-    def __repr__(self):
-        return "AccountAdmin : {} - {}".format(self.email, self.username, self.status)
+    notification  = models.ForeignKey(NotificationCustomer  , null=True, on_delete=models.CASCADE)
+    payment       = models.ForeignKey(Payment               , null=True, on_delete=models.CASCADE)

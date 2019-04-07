@@ -36,19 +36,19 @@ def home(request):
   """
 
   lEurope = create_continent("Europe", "Europe", "EUR")
-  if type(lEurope) is not LocalisationContinentData:
+  if type(lEurope) is not LocalisationContinent:
     return HttpResponse(lEurope)
 
   lAfrica = create_continent("Afrique", "Africa", "AFR")
-  if type(lAfrica) is not LocalisationContinentData:
+  if type(lAfrica) is not LocalisationContinent:
     return HttpResponse(lAfrica)
 
   lFrance = create_country("France", "France", "FRA", "Europe")
-  if type(lFrance) is not LocalisationCountryData:
+  if type(lFrance) is not LocalisationCountry:
     return HttpResponse(lFrance)
 
   lAllemagne = create_country("Allemagne", "Germany", "GER", "Euro")
-  if type(lAllemagne) is not LocalisationCountryData:
+  if type(lAllemagne) is not LocalisationCountry:
     return HttpResponse(lAllemagne)
 
   return HttpResponse("Bonjour !")
