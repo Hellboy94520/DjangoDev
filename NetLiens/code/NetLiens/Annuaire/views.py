@@ -1,54 +1,72 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from django.shortcuts import render, redirect, get_object_or_404, Http404
 
 from .models import *
 from .models_access import *
 
+from .porting import launch_conversion
+
+import logging
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
+
+
+
 # Create your views here.
 def home(request):
-  """
-  lCategory = create_category("Test 1", "Test 1", "C'est un test", "This is a test")
-  if lCategory is False: return HttpResponse("Erreur {} !".format(lCategory.data.nameFr))
+
+  categoryList = get_much_see_category("last1mConsu", 6, True)
+
+  return render(request, 'homepage.html', {'pCategoryList': categoryList})
 
 
-  lCategoryChildren = create_category("Enfant 1", "Children 1", "C'est un test enfant",
-                                      "This is a children test")
-  if lCategoryChildren is False: return HttpResponse("Erreur {} !".format(lCategoryChildren.data.nameFr))
-  lCategory.children.add(lCategoryChildren)
+# TODO: Temporary to have objects
+def create_example_category(request):
+
+  Audi   = create_category("Audi", "Audi", "", "")
+  Audi.stat.last1mConsu = 8
+  Audi.stat.save()
+
+  BMW  = create_category("BMW", "BMW", "", "")
+  BMW.stat.last1mConsu = 10
+  BMW.stat.save()
+
+  A6  = create_category("A6", "A6", "", "")
+  A3 = create_category("A3", "A3", "", "")
+
+  Audi.children.add(A6)
+  Audi.children.add(A3)
+  Audi.save()
+
+  Serie1 = create_category("Serie 1", "Serie 1", "", "")
+  Serie2 = create_category("Serie 2", "Serie 2", "", "")
+
+  BMW.children.add(Serie1)
+  BMW.children.add(Serie2)
+
+  lCategory = create_category("Automobile", "Automobile", "", "")
+  lCategory.children.add(Audi)
+  lCategory.children.add(BMW)
+
+  print(len(Category.objects.all()))
+
+  return HttpResponse("Creation des categories effectuées")
+
+def delete_category(request):
+
+  lCategory = Category.objects.filter(nameFr="Audi")
+
+  lCategory.delete()
+
+  return HttpResponse("Delete Audi Category")
 
 
-  lCategoryChildren2 = create_category("Enfant 2", "Children 2", "C'est un test enfant",
-                                      "This is a children test")
-  if lCategoryChildren2 is False: return HttpResponse("Erreur {} !".format(lCategoryChildren2.data.nameFr))
-  lCategory.children.add(lCategoryChildren2)
+def conversion(request):
+  logger.debug("[Porting] Starting...")
 
+  lresult = launch_conversion()
 
-  lCategoryChildrenChildren1 = create_category("Enfant 1-1", "Children 1-1", "C'est un test enfant",
-                                      "This is a children test")
-  if lCategoryChildrenChildren1 is False: return HttpResponse("Erreur {} !".format(lCategoryChildrenChildren1.data.nameFr))
-  lCategoryChildren.children.add(lCategoryChildrenChildren1)
-
-
-  lCategoryChildrenChildren2 = create_category("Enfant 1-2", "Children 1-2", "C'est un test enfant",
-                                      "This is a children test")
-  if lCategoryChildrenChildren2 is False: return HttpResponse("Erreur {} !".format(lCategoryChildrenChildren2.data.nameFr))
-  lCategoryChildren.children.add(lCategoryChildrenChildren2)
-  """
-
-  lEurope = create_continent("Europe", "Europe", "EUR")
-  if type(lEurope) is not LocalisationContinent:
-    return HttpResponse(lEurope)
-
-  lAfrica = create_continent("Afrique", "Africa", "AFR")
-  if type(lAfrica) is not LocalisationContinent:
-    return HttpResponse(lAfrica)
-
-  lFrance = create_country("France", "France", "FRA", "Europe")
-  if type(lFrance) is not LocalisationCountry:
-    return HttpResponse(lFrance)
-
-  lAllemagne = create_country("Allemagne", "Germany", "GER", "Euro")
-  if type(lAllemagne) is not LocalisationCountry:
-    return HttpResponse(lAllemagne)
-
-  return HttpResponse("Bonjour !")
+  logger.debug("[Porting] Done")
+  return HttpResponse(lresult)
