@@ -7,53 +7,32 @@ from django.contrib.auth.models import User
 Data
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
-class Message(models.Model):
-  sender        = models.OneToOneField(User, null=True, on_delete=models.CASCADE)
-  recipient     = models.OneToOneField(User, null=True, on_delete=models.CASCADE)
-  subject       = models.TextField()
-  date          = models.DateTimeField(default=datetime.now())
-  content       = models.TextField()
-
-  def __repr__(self):
-      return "Message : sender={}, recipient={}, subject={}, content={}".format(self.sender, self.recipient,
-                                                                                self.subject, self.content)
-
-  class Meta:
-    abstract = True
-
-
-class MessageUnread(Message):
-  pass
-
-class MessageRead(Message):
-  pass
+SubjectSize = 20
 
 
 """ --------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
-Functions
+Class
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
-def create(pSender: User, pRecipient: User, pSubject, pContent: str):
+# TODO: Voir comment lié le message à deux comptes et que si l'un des deux comptes est supprimées, le message l'est aussi !
+class Message(models.Model):
+  is_read   = models.BooleanField(default=False)  # Indicate if the message is read
+  content   = models.TextField(max_length=SubjectSize)
+  date      = models.DateTimeField(default=datetime.now())
 
-  if pSender.username == pRecipient.username:
-    return "sender: has the same username of recipient"
+  def __init__(self, pContent: str):
+    models.Model.__init__(self)
+    # Avoid to call my __setattr__ each time
+    object.__setattr__(self, 'is_read'     , False)
+    object.__setattr__(self, 'content'     , pContent)
+    object.__setattr__(self, 'date'        , datetime.now())
+    self.save()
 
-  lMessage = MessageUnread()
-  lMessage.sender     = pSender
-  lMessage.recipient  = pRecipient
-  lMessage.subject    = pSubject
-  lMessage.date       = datetime.now()
-  lMessage.content    = pContent
-  lMessage.save()
+  def __setattr__(self, key, value):
+    object.__setattr__(self, key, value)
+    self.save()
 
-  return lMessage
-
-
-def message_read(pMessage: MessageUnread):
-
-  lMessage = MessageRead.copy(pMessage)
-  lMessage.save()
-  pMessage.delete()
-
-  return lMessage
+  def __repr__(self):
+    return "Message : is_read={}, date={}, content={}"\
+      .format(str(self.is_read), str(self.date), self.content)

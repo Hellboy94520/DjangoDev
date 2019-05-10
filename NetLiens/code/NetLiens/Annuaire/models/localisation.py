@@ -1,8 +1,8 @@
 from django.db import models
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from .account import AccountAdmin
-from .communs import Log, Stat, CreationText, ModificationText
+from .communs import Status, LogAdmin, Stat, CreationText, ModificationText, DeletionText
 
 
 """ --------------------------------------------------------------------------------------------------------------------
@@ -10,10 +10,14 @@ from .communs import Log, Stat, CreationText, ModificationText
 Data
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
-lNameSize = 50
+NameSize = 50
 
 
-""" ---------------------------------------------------------------------------------------------------------------- """
+""" --------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+Enum
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------- """
 class Type(Enum):
   UN = "Unknown"
   CO = "Continent"
@@ -23,16 +27,14 @@ class Type(Enum):
   CI = "City"
 
 
-class Status(Enum):
-  UN = "Unknown"
-  AC = "Active"
-  UA = "Unactive"
-
-
-""" ---------------------------------------------------------------------------------------------------------------- """
+""" --------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+Class
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------- """
 class Localisation(models.Model):
-  nameFr        = models.CharField(max_length=lNameSize)
-  nameEn        = models.CharField(max_length=lNameSize)
+  nameFr        = models.CharField(max_length=NameSize)
+  nameEn        = models.CharField(max_length=NameSize)
   code          = models.CharField(max_length=5)
   type          = models.CharField(max_length=2,
                                    choices=[(tag, tag.value) for tag in Type],
@@ -42,17 +44,104 @@ class Localisation(models.Model):
                                    default=Status.UN)
   children      = models.ManyToManyField('self', related_name="childrenLocalisation")
 
+  def create(self, pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: Status, pAdmin: AccountAdmin):
+    # Search if the localisation does not already exist
+    lResult = verification(pNameFr, pNameEn, pCode, pType, pStatus)
+    if lResult is not True:
+      return lResult
+    # Creation
+    models.Model.__init__(self)
+    # Avoid to call deactivated __setattr__
+    object.__setattr__(self, 'nameFr'   , pNameFr )
+    object.__setattr__(self, 'nameEn'   , pNameEn )
+    object.__setattr__(self, 'code'     , pCode   )
+    object.__setattr__(self, 'type'     , pType   )
+    object.__setattr__(self, 'status'   , pStatus )
+    self.save()
+
+    # Creation LocalisationStat andLocalisationLog associate
+    LocalisationStat(self)
+    LocalisationLog("{} {}".format(CreationText, repr(self)), self, pAdmin)
+    return True
+
+  def modif(self, pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: Status, pAdmin: AccountAdmin):
+    # Search if the localisation does not already exist
+    lResult = verification(pNameFr, pNameEn, pCode, pType, pStatus)
+    if lResult is not True:
+      return lResult
+    # Prepare the log
+    lLog   = ModificationText
+    # Modification only if it is
+    if pNameFr and pNameFr != self.nameFr:
+      lLog += " nameFr: {},".format(pNameFr)
+      object.__setattr__(self, 'nameFr', pNameFr)
+    if pNameEn and pNameEn != self.nameEn:
+      lLog += " nameEn: {},".format(pNameEn)
+      object.__setattr__(self, 'nameEn', pNameEn)
+    if pCode and pCode!= self.code:
+      lLog += " code: {},".format(pCode)
+      object.__setattr__(self, 'code', pCode)
+    if pType and pType != self.type:
+      lLog += " type: {},".format(str(pType))
+      object.__setattr__(self, 'type', pType)
+    if pStatus and pStatus != self.pStatus:
+      lLog += " status: {},".format(str(pStatus))
+      object.__setattr__(self, 'status', pStatus)
+    # Save the data
+    if lLog == ModificationText: return False   # If any modification has been done
+    self.save()
+    LocalisationLog(lLog, self, pAdmin)
+
+  def to_trash(self, pAdmin: AccountAdmin):
+    # TODO: Faire le système qui va vérifier s'il faut supprimer un objet ou non dans la poubelle
+    self.status = Status.TR
+    self.date   = datetime.now()+timedelta(days=7)        # Date of deletion
+    LocalisationLog("{} {}".format(DeletionText, repr(self)))
+    # TODO: Faire le système qui va demander ou ranger les enfants
+
+  def get_logs(self):
+    return LocalisationLog.objects.filter(localisation=self)
+
+  def get_stat(self):
+    return LocalisationStat.objects.get(localisation=self)
+
   def __repr__(self):
     return "Localisation: nameFr={}, nameEn={}, code={}, type={}, status={}"\
       .format(self.nameFr, self.nameEn, self.code, self.type.value, self.status.value)
 
+  # Deactivate the constructor to have the verification and the log
+  def __init__(self):
+    pass
 
+  # Deactivate the modification by this way to be sure to have a log
+  def __setattr__(self, key, value):
+    pass
+
+  # Deactivate the deletion by this way to avoid error
+  def __del__(self):
+    pass
+
+
+""" ---------------------------------------------------------------------------------------------------------------- """
 class LocalisationStat(Stat):
   localisation  = models.OneToOneField(Localisation, on_delete=models.CASCADE, primary_key=True)
 
+  def __init__(self, pLoc: Localisation):
+    Stat.__init__(self)
+    self.localisation = pLoc
+    self.save()
 
-class LocalisationLog(Log):
+
+""" ---------------------------------------------------------------------------------------------------------------- """
+class LocalisationLog(LogAdmin):
   localisation  = models.ForeignKey(Localisation, on_delete=models.CASCADE)
+
+  def __init__(self, pModif: str, pLoc: Localisation, pAdmin: AccountAdmin):
+    LogAdmin.__init__(self)
+    self.user     = pAdmin
+    self.modif    = pModif
+    self.localisation = pLoc
+    self.save()
 
 
 """ --------------------------------------------------------------------------------------------------------------------
@@ -60,125 +149,24 @@ class LocalisationLog(Log):
 Functions
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
-" --- Creation of stat  --- "
-def create_stat(pLocalisation: Localisation):
-  lStat = LocalisationStat()
-  lStat.localisation = pLocalisation
-  lStat.save()
-  return lStat
-
-
-" --- Creation of a log  --- "
-def create_log(pUser: AccountAdmin, pModification: str, pLocalisation: Localisation):
-  lLog = LocalisationLog()
-  lLog.date         = datetime.now()
-  lLog.modif        = pModification
-  lLog.user         = pUser
-  lLog.localisation = pLocalisation
-  lLog.save()
-  return lLog
-
-
-" --- Creation of a localisation  --- "
-def create(pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: Status,
-           pUser: AccountAdmin):
-
+def verification(pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: Status, pUser: AccountAdmin):
   if Localisation.objects.filter(nameFr=pNameFr, type=pType, status=pStatus).count() != 0:
     return "nameFr: Already exist"
   if Localisation.objects.filter(nameEn=pNameEn, type=pType, status=pStatus).count() != 0:
     return "nameEn: Already exist"
-  if Localisation.objects.filter(code=pCode    , type=pType, status=pStatus).count() != 0:
+  if Localisation.objects.filter(code=pCode, type=pType, status=pStatus).count() != 0:
     return "code: Already exist"
 
-  lLoc = Localisation()
-  lLoc.nameFr = pNameFr
-  lLoc.nameEn = pNameEn
-  lLoc.code   = pCode
-  lLoc.type   = pType
-  lLoc.status = pStatus
-  lLoc.save()
-
-  create_stat(lLoc)
-  create_log(pUser, "{} {}".format(CreationText, repr(lLoc)), lLoc)
-
-  return lLoc
-
-
-" --- Modification of a localisation  --- "
-def modif(pLocalisation: Localisation, pNameFr: str, pNameEn: str, pCode: str, pType: Type,
-          pStatus: Status, pUser: AccountAdmin):
-
-  lLog = ModificationText
-  lModif = False
-
-  if pNameFr and pNameFr != pLocalisation.nameFr:
-    lLog += " nameFr: {}".format(pNameFr)
-    pLocalisation.nameFr = pNameFr
-    lModif = True
-
-  if pNameEn and pNameEn != pLocalisation.nameEn:
-    lLog += " nameEn: {}".format(pNameEn)
-    pLocalisation.nameEn = pNameEn
-    lModif = True
-
-  if pCode and pCode != pLocalisation.code:
-    lLog += " code: {}".format(pCode)
-    pLocalisation.code = pCode
-    lModif = True
-
-  if pType != Type.UN and pType != pLocalisation.type:
-    lLog += " type: {}".format(pType)
-    pLocalisation.type = pType
-    lModif = True
-
-  if pStatus != Status.UN and pStatus != pLocalisation.status:
-    lLog += " status: {}".format(pStatus)
-    pLocalisation.status = pStatus
-    lModif = True
-
-  # If any modification has been done
-  if not lModif: return False
-  # Else
-  pLocalisation.save()
-  create_log(pUser, lLog, pLocalisation)
   return True
 
 
+# TODO: Me renseigner sur le fait de voir si c'est possible de mettre cette fonction dans le classe sachant que je peux pas avoir l'enfant en Localisation
 " --- Add Children localisation to Parent localisation --- "
-def add_children(pParent: Localisation, pChildren: Localisation, pUser: AccountAdmin):
+def add_children(pParent: Localisation, pChildren: Localisation, pAdmin: AccountAdmin):
   pParent.children.add(pChildren)
   pParent.save()
-  create_log(pUser, "Add Children {}".format(repr(pChildren)))
+  LocalisationLog("Add Children {}".format(repr(pChildren)), pParent, pAdmin)
   return True
 
-
-" --- Get logs associate to Localisation --- "
-def get_logs(pLocalisation: Localisation):
-  return LocalisationLog.objects.filter(localisation=pLocalisation)
-
-
-" --- Get stat associate to Localisation --- "
-def get_stat(pLocalisation: Localisation):
-  lResult = LocalisationStat.objects.filter(localisation=pLocalisation)
-  if lResult.count() != 1:
-    return "Error : Any or too many results !"
-  return lResult[0]
-
-
-" --- Add One Consultation --- "
-def add_oneconsult(pLocalisation: Localisation):
-  # Search stat associate to Localisation
-  lStat = get_stat(pLocalisation)
-  if len(lStat) != 1: return "Error: Stat not found"
-
-  # If Available
-  lStat = lStat[0]
-  lStat.last1yConsu += 1
-  lStat.last1mConsu += 1
-  lStat.last1wConsu += 1
-  lStat.last1dConsu += 1
-  lStat.save()
-
-  return True
 
 
