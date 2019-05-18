@@ -61,9 +61,7 @@ class Localisation(models.Model):
 
     # Creation LocalisationStat andLocalisationLog associate
     LocalisationStat(self)
-    LocalisationLog("{} {}".format(CreationText, repr(self)),
-                    self,
-                    pAdmin)
+    LocalisationLog("{} {}".format(CreationText, repr(self)), self, pAdmin)
     return True
 
   def modif(self, pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: Status, pAdmin: AccountAdmin):
@@ -138,11 +136,11 @@ class LocalisationStat(Stat):
 class LocalisationLog(LogAdmin):
   localisation  = models.ForeignKey(Localisation, on_delete=models.CASCADE)
 
-  def __init__(self, pModif, pLoc: Localisation, pAdmin: AccountAdmin):
+  def __init__(self, pModif: str, pLoc: Localisation, pAdmin: AccountAdmin):
     LogAdmin.__init__(self)
     self.user     = pAdmin
     self.modif    = pModif
-    self.category = pLoc
+    self.localisation = pLoc
     self.save()
 
 
@@ -162,7 +160,7 @@ def verification(pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: S
   return True
 
 
-# TODO: Me renseigner sur le fait de voir si c'est possible de mettre cette fonction dans le classe sachant que je peux pas avoir l'enfant en Category
+# TODO: Me renseigner sur le fait de voir si c'est possible de mettre cette fonction dans le classe sachant que je peux pas avoir l'enfant en Localisation
 " --- Add Children localisation to Parent localisation --- "
 def add_children(pParent: Localisation, pChildren: Localisation, pAdmin: AccountAdmin):
   pParent.children.add(pChildren)

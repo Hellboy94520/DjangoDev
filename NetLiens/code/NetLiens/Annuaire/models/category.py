@@ -3,8 +3,6 @@ from datetime import datetime, timedelta
 from .account import AccountAdmin
 from .communs import Status, LogAdmin, Stat, CreationText, ModificationText, DeletionText
 
-from django.dispatch import receiver
-
 """ --------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
 Data
@@ -39,12 +37,9 @@ class Category(models.Model):
     object.__setattr__(self, 'resumeEn' , pResumeEn )
     object.__setattr__(self, 'status'   , pStatus   )
     self.save()
-
     # Creation CategoryStat and CategoryLog associate
     CategoryStat(self)
-    CategoryLog("{} {}".format(CreationText, repr(self)),
-                self,
-                pAdmin)
+    CategoryLog("{} {}".format(CreationText, repr(self)), self, pAdmin)
 
   def modif(self, pNameFr: str, pNameEn: str, pResumeFr: str, pResumeEn: str, pStatus: Status, pAdmin: AccountAdmin):
     lLog = ModificationText
@@ -73,7 +68,7 @@ class Category(models.Model):
     # TODO: Faire le système qui va vérifier s'il faut supprimer un objet ou non dans la poubelle
     self.status = Status.TR
     self.date   = datetime.now()+timedelta(days=7)        # Date of deletion
-    CategoryLog("{} {}".format(DeletionText, repr(self)), pAdmin)
+    CategoryLog("{} {}".format(DeletionText, repr(self)), self, pAdmin)
     # TODO: Faire le système qui va déplacer les sites qui avait cette catégory par celle parent
 
   def get_logs(self):
@@ -109,7 +104,7 @@ class CategoryStat(Stat):
 class CategoryLog(LogAdmin):
   category     = models.ForeignKey(Category  , on_delete=models.CASCADE)
 
-  def __init__(self, pModif, pCategory: Category, pAdmin: AccountAdmin):
+  def __init__(self, pModif: str, pCategory: Category, pAdmin: AccountAdmin):
     LogAdmin.__init__(self)
     self.user     = pAdmin
     self.modif    = pModif
