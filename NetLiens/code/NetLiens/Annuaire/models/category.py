@@ -27,50 +27,6 @@ class Category(models.Model):
   children  = models.ManyToManyField('self', related_name='childrenCategory')
   date      = models.DateField(default=datetime.now())    # Creation Date
 
-  " --- Constructor --- "
-  def __init__(self, pNameFr: str, pNameEn: str, pResumeFr: str, pResumeEn: str, pStatus: Status, pAdmin: AccountAdmin):
-    models.Model.__init__(self)
-    # Avoid to call deactivated __setattr__
-    object.__setattr__(self, 'nameFr'   , pNameFr   )
-    object.__setattr__(self, 'nameEn'   , pNameEn   )
-    object.__setattr__(self, 'resumeFr' , pResumeFr )
-    object.__setattr__(self, 'resumeEn' , pResumeEn )
-    object.__setattr__(self, 'status'   , pStatus   )
-    self.save()
-    # Creation CategoryStat and CategoryLog associate
-    CategoryStat(self)
-    CategoryLog("{} {}".format(CreationText, repr(self)), self, pAdmin)
-
-  def modif(self, pNameFr: str, pNameEn: str, pResumeFr: str, pResumeEn: str, pStatus: Status, pAdmin: AccountAdmin):
-    lLog = ModificationText
-    # Modification only if it is
-    if pNameFr and pNameFr != self.nameFr:
-      lLog += " nameFr: {},".format(pNameFr)
-      self.nameFr = pNameFr
-    if pNameEn and pNameEn != self.nameEn:
-      lLog += " nameEn: {},".format(pNameEn)
-      self.nameEn = pNameEn
-    if pResumeFr and pResumeFr != self.resumeFr:
-      lLog += " resumeFr: {},".format(pResumeFr)
-      self.resumeFr = pResumeFr
-    if pResumeEn and pResumeEn != self.resumeEn:
-      lLog += " resumeEn: {},".format(pResumeEn)
-      self.resumeEn = pResumeEn
-    if pStatus != Status.UN and pStatus != self.status:
-      lLog += " status : {},".format(pStatus)
-      self.status = pStatus
-    # Save the data
-    if lLog == ModificationText: return False   # If any modification has been done
-    self.save()
-    CategoryLog(lLog, self, pAdmin)
-
-  def to_trash(self, pAdmin: AccountAdmin):
-    # TODO: Faire le système qui va vérifier s'il faut supprimer un objet ou non dans la poubelle
-    self.status = Status.TR
-    self.date   = datetime.now()+timedelta(days=7)        # Date of deletion
-    CategoryLog("{} {}".format(DeletionText, repr(self)), self, pAdmin)
-    # TODO: Faire le système qui va déplacer les sites qui avait cette catégory par celle parent
-
   def get_logs(self):
     return CategoryLog.objects.filter(category=self)
 
@@ -81,44 +37,77 @@ class Category(models.Model):
     return "Category : nameFr={}, nameEn={}, resumeFr={}, resumeEn={}, status={}, date={}"\
       .format(self.nameFr, self.nameEn, self.resumeFr, self.resumeEn, self.status.value, self.date)
 
-  # Deactivate the modification by this way to be sure to have a log
-  def __setattr__(self, key, value):
-    pass
-
-  # Deactivate the deletion to have personnal system
-  def __del__(self):
-    pass
-
 
 """ ---------------------------------------------------------------------------------------------------------------- """
 class CategoryStat(Stat):
   category    = models.OneToOneField(Category, on_delete=models.CASCADE, primary_key=True)
-
-  def __init__(self, pCategory: Category):
-    Stat.__init__(self)
-    self.category = pCategory
-    self.save()
 
 
 """ ---------------------------------------------------------------------------------------------------------------- """
 class CategoryLog(LogAdmin):
   category     = models.ForeignKey(Category  , on_delete=models.CASCADE)
 
-  def __init__(self, pModif: str, pCategory: Category, pAdmin: AccountAdmin):
-    LogAdmin.__init__(self)
-    self.user     = pAdmin
-    self.modif    = pModif
-    self.category = pCategory
-    self.save()
-
 
 """ --------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
-Functions
+Class Functions
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
-# TODO: Me renseigner sur le fait de voir si c'est possible de mettre cette fonction dans le classe sachant que je peux pas avoir l'enfant en Category
-" --- Add Children category to Parent category --- "
+" -------------------------------------------------------------------------------------------------------------------- "
+def create_category_stat(pCategory: Category):
+  lStat = CategoryStat()
+  lStat.category = pCategory
+  lStat.save()
+
+def create_category_log(pModif: str, pCategory: Category, pAdmin: AccountAdmin):
+  lLog = CategoryLog()
+  lLog.modif = pModif
+  lLog.category = pCategory
+  lLog.user = pAdmin
+  lLog.save()
+
+def create_category(pNameFr: str, pNameEn: str, pResumeFr: str, pResumeEn: str, pStatus: Status, pAdmin: AccountAdmin):
+  # Creation of the category
+  lCategory = Category()
+  lCategory.nameFr = pNameFr
+  lCategory.nameEn = pNameEn
+  lCategory.resumeFr = pResumeFr
+  lCategory.resumeEn = pResumeEn
+  lCategory.status = pStatus
+  lCategory.save()
+
+  # Creation of CategoryStat link to Category
+  create_category_stat(lCategory)
+
+  # Creation of CategoryLog link to Category
+  create_category_log("{}{}".format(CreationText, repr(lCategory)), lCategory, pAdmin)
+
+  # Return the new Category
+  return lCategory
+
+
+" -------------------------------------------------------------------------------------------------------------------- "
+def modif_category(pCategory: Category, pNameFr: str, pNameEn: str, pResumeFr: str, pResumeEn: str,
+                   pAdmin: AccountAdmin):
+  # Modification of the data
+  pCategory.nameFr = pNameFr
+  pCategory.nameEn = pNameEn
+  pCategory.resumeFr = pResumeFr
+  pCategory.resumeEn = pResumeEn
+
+  # Save the data
+  pCategory.save()
+  
+  # Creation of the modification log
+  create_category_log("{}{}".format(ModificationText, repr(pCategory)), pCategory, pAdmin)
+  return True
+
+def modif_category_status(pCategory: Category, pStatus: Status, pAdmin: AccountAdmin):
+  # TODO
+  pass
+
+
+" -------------------------------------------------------------------------------------------------------------------- "
 def add_children(pParent: Category, pChildren: Category, pUser: AccountAdmin):
   pParent.children.add(pChildren)
   pParent.save()
@@ -126,8 +115,13 @@ def add_children(pParent: Category, pChildren: Category, pUser: AccountAdmin):
   return True
 
 
+""" --------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+Database Functions
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------- """
 " --- Get the much see category --- "
-def get_much_see(pTimePeriod: str, pQuantity: int, pReverse: bool):
+def get_much_see_category(pTimePeriod: str, pQuantity: int, pReverse: bool):
 
   if pReverse is True: lParam = "-" + pTimePeriod
   else:                lParam = pTimePeriod
@@ -140,6 +134,6 @@ def get_much_see(pTimePeriod: str, pQuantity: int, pReverse: bool):
   categoryList = []
 
   for categoryStat in categoryStatList:
-    categoryList.append(Category.objects.get(stat_id=categoryStat.id))
+    categoryList.append(categoryStat.category)
 
   return categoryList

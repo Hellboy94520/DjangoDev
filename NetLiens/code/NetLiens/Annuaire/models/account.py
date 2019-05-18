@@ -24,7 +24,7 @@ from uuid import uuid4
 ------------------------------------------------------------------------------------------------------------------------
 Data
 ------------------------------------------------------------------------------------------------------------------------
--------------------------------------------------------------------------------------------------------------------- """
+-------------------------------------------------------------------------------------------------------------------- 
 activationDaysDelay = 7
 
 class AccountActivation(models.Model):
@@ -44,12 +44,12 @@ class AccountActivation(models.Model):
   # Deactivate the modification by this way to be sure to have a log
   def __setattr__(self, key, value):
     pass
+"""
 
-
-""" ---------------------------------------------------------------------------------------------------------------- """
+""" ---------------------------------------------------------------------------------------------------------------- 
 class AccountCustomer(User):
   company = models.CharField(max_length=50)
-  activation = models.OneToOneField(AccountActivation, null=True, on_delete=models.SET_NULL)
+  #activation = models.OneToOneField(AccountActivation, null=True, on_delete=models.SET_NULL)
 
   def __init__(self, pUsername: str, pLastname: str, pFirstName: str, pEmail: str, pPassword: str, pCompany: str):
     User.__init__(self)
@@ -71,30 +71,26 @@ class AccountCustomer(User):
   def __setattr__(self, key, value):
     object.__setattr__(self, key, value)
     self.save()
-
+"""
 
 """ ---------------------------------------------------------------------------------------------------------------- """
-class AccountAdmin(User):
-
-  def __init__(self, pUsername: str, pLastname: str, pFirstName: str, pEmail: str, pPassword: str, pCompany: str,
-               pSuperUser: bool):
-    User.__init__(self)
-    object.__setattr__(self, 'username'    , pUsername)
-    object.__setattr__(self, 'last_name'   , pLastname)
-    object.__setattr__(self, 'first_name'  , pFirstName)
-    object.__setattr__(self, 'email'       , pEmail)
-    object.__setattr__(self, 'password'    , pPassword)  # TODO: Crypter le mot de passe
-    object.__setattr__(self, 'company'     , pCompany)
-    object.__setattr__(self, 'is_active'   , False)
-    object.__setattr__(self, 'is_staff'    , True)
-    object.__setattr__(self, 'is_superuser', pSuperUser)
-    self.save()
+class AccountAdmin(models.Model):
+  user = models.OneToOneField(User, on_delete=models.CASCADE)
 
   def __repr__(self):
     return "AccountCustomer : username={}, last_name={}, first_name={}, email={}"\
-      .format(self.username, self.last_name, self.first_name, self.email)
+      .format(self.user.username, self.user.last_name, self.user.first_name, self.user.email)
 
-  def __setattr__(self, key, value):
-    object.__setattr__(self, key, value)
-    self.save()
 
+""" --------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+Functions
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------- """
+def create_account_admin(pUsername: str, pLastname: str, pFirstName: str, pEmail: str, pPassword: str,
+                         pSuperUser: bool):
+  User.objects.create_superuser(pUsername, pEmail, pPassword, last_name=pLastname, first_name=pFirstName,
+                                is_superuser=pSuperUser)
+  lAccount = AccountAdmin()
+  lAccount.user = User.objects.get(username=pUsername)
+  lAccount.save()

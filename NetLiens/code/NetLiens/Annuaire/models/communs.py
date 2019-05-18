@@ -63,13 +63,6 @@ class Stat(models.Model):
   last1wConsu = models.IntegerField(default=0)
   last1dConsu = models.IntegerField(default=0)
 
-  def __init__(self):
-    models.Model.__init__(self)
-    self.last1yConsu = 0
-    self.last1mConsu = 0
-    self.last1wConsu = 0
-    self.last1dConsu = 0
-
   class Meta:
     abstract = True
 
