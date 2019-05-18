@@ -44,26 +44,6 @@ class Localisation(models.Model):
                                    default=Status.UN)
   children      = models.ManyToManyField('self', related_name="childrenLocalisation")
 
-  def create(self, pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: Status, pAdmin: AccountAdmin):
-    # Search if the localisation does not already exist
-    lResult = verification(pNameFr, pNameEn, pCode, pType, pStatus)
-    if lResult is not True:
-      return lResult
-    # Creation
-    models.Model.__init__(self)
-    # Avoid to call deactivated __setattr__
-    object.__setattr__(self, 'nameFr'   , pNameFr )
-    object.__setattr__(self, 'nameEn'   , pNameEn )
-    object.__setattr__(self, 'code'     , pCode   )
-    object.__setattr__(self, 'type'     , pType   )
-    object.__setattr__(self, 'status'   , pStatus )
-    self.save()
-
-    # Creation LocalisationStat andLocalisationLog associate
-    LocalisationStat(self)
-    LocalisationLog("{} {}".format(CreationText, repr(self)), self, pAdmin)
-    return True
-
   def modif(self, pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: Status, pAdmin: AccountAdmin):
     # Search if the localisation does not already exist
     lResult = verification(pNameFr, pNameEn, pCode, pType, pStatus)
@@ -92,12 +72,6 @@ class Localisation(models.Model):
     self.save()
     LocalisationLog(lLog, self, pAdmin)
 
-  def to_trash(self, pAdmin: AccountAdmin):
-    # TODO: Faire le système qui va vérifier s'il faut supprimer un objet ou non dans la poubelle
-    self.status = Status.TR
-    self.date   = datetime.now()+timedelta(days=7)        # Date of deletion
-    LocalisationLog("{} {}".format(DeletionText, repr(self)))
-    # TODO: Faire le système qui va demander ou ranger les enfants
 
   def get_logs(self):
     return LocalisationLog.objects.filter(localisation=self)
@@ -109,39 +83,15 @@ class Localisation(models.Model):
     return "Localisation: nameFr={}, nameEn={}, code={}, type={}, status={}"\
       .format(self.nameFr, self.nameEn, self.code, self.type.value, self.status.value)
 
-  # Deactivate the constructor to have the verification and the log
-  def __init__(self):
-    pass
-
-  # Deactivate the modification by this way to be sure to have a log
-  def __setattr__(self, key, value):
-    pass
-
-  # Deactivate the deletion by this way to avoid error
-  def __del__(self):
-    pass
-
 
 """ ---------------------------------------------------------------------------------------------------------------- """
 class LocalisationStat(Stat):
   localisation  = models.OneToOneField(Localisation, on_delete=models.CASCADE, primary_key=True)
 
-  def __init__(self, pLoc: Localisation):
-    Stat.__init__(self)
-    self.localisation = pLoc
-    self.save()
-
 
 """ ---------------------------------------------------------------------------------------------------------------- """
 class LocalisationLog(LogAdmin):
   localisation  = models.ForeignKey(Localisation, on_delete=models.CASCADE)
-
-  def __init__(self, pModif: str, pLoc: Localisation, pAdmin: AccountAdmin):
-    LogAdmin.__init__(self)
-    self.user     = pAdmin
-    self.modif    = pModif
-    self.localisation = pLoc
-    self.save()
 
 
 """ --------------------------------------------------------------------------------------------------------------------
@@ -159,14 +109,62 @@ def verification(pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: S
 
   return True
 
+def create_localisation_stat(pLocalisation: Localisation):
+  lStat = LocalisationStat()
+  lStat.localisation = pLocalisation
+  lStat.save()
 
-# TODO: Me renseigner sur le fait de voir si c'est possible de mettre cette fonction dans le classe sachant que je peux pas avoir l'enfant en Localisation
-" --- Add Children localisation to Parent localisation --- "
+def create_localisation_log(pModif: str, pLoc: Localisation, pAdmin: AccountAdmin):
+  lLog = LocalisationLog()
+  lLog.user         = pAdmin
+  lLog.localisation = pLoc
+  lLog.modif        = pModif
+  lLog.save()
+
+def create_localisation(pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: Status, pAdmin: AccountAdmin):
+  lLoc = Localisation()
+  lLoc.nameFr = pNameFr
+  lLoc.nameEn = pNameEn
+  lLoc.code   = pCode
+  lLoc.type   = pType
+  lLoc.status = pStatus
+  lLoc.save()
+
+  # Creation of CategoryStat link to Category
+  create_localisation_stat(lLoc)
+
+  # Creation of CategoryLog link to Category
+  create_localisation_log("{}{}".format(CreationText, repr(lLoc)), lLoc, pAdmin)
+
+  return lLoc
+
+
+" -------------------------------------------------------------------------------------------------------------------- "
+def modif_localisation(pLocalisation: Localisation, pNameFr: str, pNameEn: str, pCode: str, pType: Type,
+                       pStatus: Status, pAdmin: AccountAdmin):
+  # Modification of the data
+  pLocalisation.nameFr  = pNameFr
+  pLocalisation.nameEn  = pNameEn
+  pLocalisation.code    = pCode
+  pLocalisation.type    = pType
+  pLocalisation.status  = pStatus
+
+  # Save the data
+  pLocalisation.save()
+
+  # Creation of the modification log
+  create_localisation_log("{}{}".format(ModificationText, repr(pLocalisation)), pLocalisation, pAdmin)
+
+  return True
+
+
+" -------------------------------------------------------------------------------------------------------------------- "
 def add_children(pParent: Localisation, pChildren: Localisation, pAdmin: AccountAdmin):
   pParent.children.add(pChildren)
   pParent.save()
   LocalisationLog("Add Children {}".format(repr(pChildren)), pParent, pAdmin)
   return True
+
 
 
 

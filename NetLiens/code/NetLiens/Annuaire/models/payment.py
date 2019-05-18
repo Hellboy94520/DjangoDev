@@ -8,7 +8,7 @@ from enum import Enum
 Data
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
-RefSize         = 20 #TODO: a modifier et définir un format
+RefSize         = 20 # TODO: a modifier et définir un format
 PaypalRefSize   = 20
 NLSize          = 10
 
@@ -51,37 +51,6 @@ class Payment(models.Model):
   level09       = models.PositiveSmallIntegerField(default=0)
   level10       = models.PositiveSmallIntegerField(default=0)
 
-  " --- Constructor --- "
-  def __init__(self, pReference: str, pSum: int, pType: Type, pDate: datetime, pDetails: str, pNLDict: dict):
-    models.Model.__init__(self)
-    # Avoid to call my __setattr__ each time
-    object.__setattr__(self, 'reference' , pReference)
-    object.__setattr__(self, 'sum'       , pSum)
-    object.__setattr__(self, 'type'      , pType)
-    object.__setattr__(self, 'date'      , pDate)
-    object.__setattr__(self, 'details'   , pDetails)
-
-    for nlevel, quantity in pNLDict.items():
-      if   nlevel == 1:   object.__setattr__(self, 'level01' , quantity)
-      elif nlevel == 2:   object.__setattr__(self, 'level02' , quantity)
-      elif nlevel == 3:   object.__setattr__(self, 'level03' , quantity)
-      elif nlevel == 4:   object.__setattr__(self, 'level04' , quantity)
-      elif nlevel == 5:   object.__setattr__(self, 'level05' , quantity)
-      elif nlevel == 6:   object.__setattr__(self, 'level06' , quantity)
-      elif nlevel == 7:   object.__setattr__(self, 'level07' , quantity)
-      elif nlevel == 8:   object.__setattr__(self, 'level08' , quantity)
-      elif nlevel == 9:   object.__setattr__(self, 'level09' , quantity)
-      elif nlevel == 10:  object.__setattr__(self, 'level10' , quantity)
-
-    self.save()
-
-  " --- Setter --- "
-  """ # Payment cannot be modified
-  def __setattr__(self, key, value):
-    object.__setattr__(self, key, value)
-    self.save()
-  """
-
   " --- Shower --- "
   def __repr__(self):
     lRepr = "Payment : reference={}, sum={}, date={}, detail={}"\
@@ -98,38 +67,12 @@ class Payment(models.Model):
     if self.level10 != 0: lRepr += ", level10={}".format(self.level10)
     return lRepr
 
-  " --- Get the Paypal payment associate --- "
-  def get_paypalPayment(self):
-    if self.type != Type.PA:
-      return False
-    try:
-      return PaypalPayment.objects.get(payement=self)
-    # TODO: Voir is ça marche
-    except PaypalPayment.DoesNotExist:
-      return None
-
 
 """ ---------------------------------------------------------------------------------------------------------------- """
 class PaypalPayment(models.Model):
-
   reference     = models.CharField(max_length=PaypalRefSize)      # Paypal reference
   # TODO: Ajouter d'autres informations si Paypal en fournit plus
-
   payment       = models.OneToOneField(Payment, on_delete=models.CASCADE, primary_key=True)
-
-  " --- Creation of itself --- "
-  def __init__(self, pReference: str, pPayment: Payment):
-    models.Model.__init__(self)
-    # Avoid to call my __setattr__ each time
-    object.__setattr__(self, 'reference' , pReference)
-    object.__setattr__(self, 'payment'   , pPayment  )
-
-  " --- Setter --- "
-  """  # PaypalPayment cannot be modified
-  def __setattr__(self, key, value):
-    object.__setattr__(self, key, value)
-    self.save()
-  """
 
   " --- Shower --- "
   def __repr__(self):
@@ -139,21 +82,61 @@ class PaypalPayment(models.Model):
 
 """ --------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
-Functions
+Class Functions
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
+def get_nl(pPayment: Payment, pNLDict: dict):
+  for nlevel, quantity in pNLDict.items():
+    if nlevel == 1:     pPayment.level01 = quantity
+    elif nlevel == 2:   pPayment.level02 = quantity
+    elif nlevel == 3:   pPayment.level03 = quantity
+    elif nlevel == 4:   pPayment.level04 = quantity
+    elif nlevel == 5:   pPayment.level05 = quantity
+    elif nlevel == 6:   pPayment.level06 = quantity
+    elif nlevel == 7:   pPayment.level07 = quantity
+    elif nlevel == 8:   pPayment.level08 = quantity
+    elif nlevel == 9:   pPayment.level09 = quantity
+    elif nlevel == 10:  pPayment.level10 = quantity
+
+
 " --- Creation of a gift payment --- "
-def create_payment_gift(pReference: str, pDetails: str, pDate: datetime, pNLDict: dict):
-  return Payment(pReference, 0, Type.GI, pDate, pDetails, pNLDict)
+def create_payment_gift(pReference: str, pDetails: str, pNLDict: dict):
+  lPayment = Payment()
+  lPayment.reference = pReference
+  lPayment.details   = pDetails
+  lPayment.type      = Type.GI
+  lPayment.sum       = 0
+  get_nl(lPayment, pNLDict)
+  lPayment.save()
+  return lPayment
 
 
 " --- Creation of a referencement payment --- "
-def create_payment_reference(pReference: str, pDetails: str, pDate: datetime, pNLDict: dict):
-  return Payment(pReference, 0, Type.RE, pDate, pDetails, pNLDict)
+def create_payment_reference(pReference: str, pDetails: str, pNLDict: dict):
+  lPayment = Payment()
+  lPayment.reference = pReference
+  lPayment.details   = pDetails
+  lPayment.type      = Type.RE
+  lPayment.sum       = 0
+  get_nl(lPayment, pNLDict)
+  lPayment.save()
+  return lPayment
 
 
 " --- Creation of a referencement payment --- "
-def create_payment_paypal(pReference: str, pSum: int, pDetails: str, pDate: datetime, pNLDict: dict, pPaypalRef: str):
-  lPayment = Payment(pReference, pSum, Type.PA, pDate, pDetails, pNLDict)
-  PaypalPayment(pPaypalRef, lPayment)
+def create_payment_paypal(pReference: str, pSum: int, pDetails: str, pNLDict: dict, pPaypalRef: str):
+  lPayment = Payment()
+  lPayment.reference = pReference
+  lPayment.details   = pDetails
+  lPayment.type      = Type.PA
+  lPayment.sum       = pSum
+  get_nl(lPayment, pNLDict)
+  lPayment.save()
+
+  # Creation of Paypal payment
+  lPaypal = PaypalPayment()
+  lPaypal.reference = pPaypalRef
+  lPaypal.payment   = lPayment
+  lPaypal.save()
+
   return lPayment

@@ -21,18 +21,13 @@ class Message(models.Model):
   content   = models.TextField(max_length=SubjectSize)
   date      = models.DateTimeField(default=datetime.now())
 
-  def __init__(self, pContent: str):
-    models.Model.__init__(self)
-    # Avoid to call my __setattr__ each time
-    object.__setattr__(self, 'is_read'     , False)
-    object.__setattr__(self, 'content'     , pContent)
-    object.__setattr__(self, 'date'        , datetime.now())
-    self.save()
-
-  def __setattr__(self, key, value):
-    object.__setattr__(self, key, value)
-    self.save()
-
   def __repr__(self):
     return "Message : is_read={}, date={}, content={}"\
       .format(str(self.is_read), str(self.date), self.content)
+
+
+" -------------------------------------------------------------------------------------------------------------------- "
+def create_message(pContent: str):
+  lMesg = Message()
+  lMesg.content = pContent
+  lMesg.save()

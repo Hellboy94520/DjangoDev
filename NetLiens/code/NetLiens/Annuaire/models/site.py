@@ -24,16 +24,6 @@ class Site(models.Model):
 	                           default=Status.UN)
 	category = models.OneToOneField(Category, on_delete=models.CASCADE, primary_key=True)
 
-	def __init__(self, pTitre: str, pContent: str, pAdmin: AccountAdmin):
-		models.Model.__init__(self)
-		object.__setattr__(self, 'titre'  , pTitre)
-		object.__setattr__(self, 'content', pContent)
-		object.__setattr__(self, 'status' , Status.UN)
-		self.save()
-		# Creation SiteStat and SiteLog associate
-		SiteStat(self)
-		SiteLog("{} {}".format(CreationText, repr(self)), self, pAdmin)
-
 	def modif(self, pTitre: str, pContent: str, pAdmin: AccountAdmin):
 		# Prepare the log
 		lLog = ModificationText
@@ -55,32 +45,57 @@ class Site(models.Model):
 		self.date = datetime.now() + timedelta(days=7)  # Date of deletion
 		SiteLog("{} {}".format(DeletionText, repr(self)), self, pAdmin)
 
-	# Deactivate the modification by this way to be sure to have a log
-	def __setattr__(self, key, value):
-		pass
 
-	# Deactivate the deletion to have personnal system
-	def __del__(self):
-		pass
-
-
-""" ---------------------------------------------------------------------------------------------------------------- """
+" -------------------------------------------------------------------------------------------------------------------- "
 class SiteStat(Stat):
 	site = models.OneToOneField(Site, on_delete=models.CASCADE, primary_key=True)
-
-	def __init__(self, pSite: Site):
-		Stat.__init__(self)
-		self.site = pSite
-		self.save()
 
 
 """ ---------------------------------------------------------------------------------------------------------------- """
 class SiteLog(LogAdmin):
 	site  = models.ForeignKey(Site, on_delete=models.CASCADE)
 
-	def __init__(self, pModif: str, pSite: Site, pAdmin: AccountAdmin):
-		LogAdmin.__init__(self)
-		self.user     = pAdmin
-		self.modif    = pModif
-		self.site     = pSite
-		self.save()
+
+""" --------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+Class Functions
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------- """
+def create_site_stat(pSite: Site):
+	lStat = SiteStat()
+	lStat.site = pSite
+	lStat.save()
+
+def create_site_log(pModif: str, pSite: Site, pAdmin: AccountAdmin):
+	lLog = SiteLog()
+	lLog.user   = pAdmin
+	lLog.site   = pSite
+	lLog.modif  = pModif
+	lLog.save()
+
+def create_site(pTitre: str, pContent: str, pAdmin: AccountAdmin):
+	lSite = Site()
+	lSite.titre = pTitre
+	lSite.content = pContent
+	lSite.status = Status.UA
+	lSite.save()
+
+	# Creation of SiteStat link to Site
+	create_site_stat(lSite)
+
+	# Creation of SiteLog link to Site
+	create_site_log("{}{}".format(CreationText, repr(lSite)), lSite, pAdmin)
+
+	# Return the new Category
+	return lSite
+
+
+""" ---------------------------------------------------------------------------------------------------------------- """
+def modif_site(pSite: Site, pTitre: str, pContent: str, pAdmin: AccountAdmin):
+	pSite.titre   = pTitre
+	pSite.content = pContent
+	pSite.save()
+
+	create_site_log("{}{}".format(ModificationText, repr(pSite)))
+
+	return True
