@@ -94,3 +94,5 @@ def create_account_admin(pUsername: str, pLastname: str, pFirstName: str, pEmail
   lAccount = AccountAdmin()
   lAccount.user = User.objects.get(username=pUsername)
   lAccount.save()
+
+  return lAccount

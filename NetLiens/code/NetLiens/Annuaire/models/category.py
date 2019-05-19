@@ -17,6 +17,7 @@ Class
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
 class Category(models.Model):
+  objects = None
   nameFr    = models.CharField(max_length=CategoryTitleSize, default="")
   nameEn    = models.CharField(max_length=CategoryTitleSize, default="")
   resumeFr  = models.TextField(max_length=50, default="")
@@ -35,7 +36,7 @@ class Category(models.Model):
 
   def __repr__(self):
     return "Category : nameFr={}, nameEn={}, resumeFr={}, resumeEn={}, status={}, date={}"\
-      .format(self.nameFr, self.nameEn, self.resumeFr, self.resumeEn, self.status.value, self.date)
+      .format(self.nameFr, self.nameEn, self.resumeFr, self.resumeEn, str(self.status), self.date)
 
 
 """ ---------------------------------------------------------------------------------------------------------------- """
@@ -87,13 +88,12 @@ def create_category(pNameFr: str, pNameEn: str, pResumeFr: str, pResumeEn: str, 
 
 
 " -------------------------------------------------------------------------------------------------------------------- "
-def modif_category(pCategory: Category, pNameFr: str, pNameEn: str, pResumeFr: str, pResumeEn: str,
-                   pAdmin: AccountAdmin):
+def modif_category(pCategory: Category, pAdmin: AccountAdmin, pNameFr="", pNameEn="", pResumeFr="", pResumeEn=""):
   # Modification of the data
-  pCategory.nameFr = pNameFr
-  pCategory.nameEn = pNameEn
-  pCategory.resumeFr = pResumeFr
-  pCategory.resumeEn = pResumeEn
+  if pNameFr:   pCategory.nameFr = pNameFr
+  if pNameEn:   pCategory.nameEn = pNameEn
+  if pResumeFr: pCategory.resumeFr = pResumeFr
+  if pResumeEn: pCategory.resumeEn = pResumeEn
 
   # Save the data
   pCategory.save()
