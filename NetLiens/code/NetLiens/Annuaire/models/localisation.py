@@ -33,6 +33,7 @@ Class
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
 class Localisation(models.Model):
+  objects = None
   nameFr        = models.CharField(max_length=NameSize)
   nameEn        = models.CharField(max_length=NameSize)
   code          = models.CharField(max_length=5)
@@ -44,35 +45,6 @@ class Localisation(models.Model):
                                    default=Status.UN)
   children      = models.ManyToManyField('self', related_name="childrenLocalisation")
 
-  def modif(self, pNameFr: str, pNameEn: str, pCode: str, pType: Type, pStatus: Status, pAdmin: AccountAdmin):
-    # Search if the localisation does not already exist
-    lResult = verification(pNameFr, pNameEn, pCode, pType, pStatus)
-    if lResult is not True:
-      return lResult
-    # Prepare the log
-    lLog   = ModificationText
-    # Modification only if it is
-    if pNameFr and pNameFr != self.nameFr:
-      lLog += " nameFr: {},".format(pNameFr)
-      object.__setattr__(self, 'nameFr', pNameFr)
-    if pNameEn and pNameEn != self.nameEn:
-      lLog += " nameEn: {},".format(pNameEn)
-      object.__setattr__(self, 'nameEn', pNameEn)
-    if pCode and pCode!= self.code:
-      lLog += " code: {},".format(pCode)
-      object.__setattr__(self, 'code', pCode)
-    if pType and pType != self.type:
-      lLog += " type: {},".format(str(pType))
-      object.__setattr__(self, 'type', pType)
-    if pStatus and pStatus != self.pStatus:
-      lLog += " status: {},".format(str(pStatus))
-      object.__setattr__(self, 'status', pStatus)
-    # Save the data
-    if lLog == ModificationText: return False   # If any modification has been done
-    self.save()
-    LocalisationLog(lLog, self, pAdmin)
-
-
   def get_logs(self):
     return LocalisationLog.objects.filter(localisation=self)
 
@@ -81,7 +53,7 @@ class Localisation(models.Model):
 
   def __repr__(self):
     return "Localisation: nameFr={}, nameEn={}, code={}, type={}, status={}"\
-      .format(self.nameFr, self.nameEn, self.code, self.type.value, self.status.value)
+      .format(self.nameFr, self.nameEn, self.code, str(self.type), str(self.status))
 
 
 """ ---------------------------------------------------------------------------------------------------------------- """
@@ -140,14 +112,11 @@ def create_localisation(pNameFr: str, pNameEn: str, pCode: str, pType: Type, pSt
 
 
 " -------------------------------------------------------------------------------------------------------------------- "
-def modif_localisation(pLocalisation: Localisation, pNameFr: str, pNameEn: str, pCode: str, pType: Type,
-                       pStatus: Status, pAdmin: AccountAdmin):
+def modif_localisation(pLocalisation: Localisation, pAdmin: AccountAdmin, pNameFr="", pNameEn="", pCode=""):
   # Modification of the data
-  pLocalisation.nameFr  = pNameFr
-  pLocalisation.nameEn  = pNameEn
-  pLocalisation.code    = pCode
-  pLocalisation.type    = pType
-  pLocalisation.status  = pStatus
+  if pNameFr: pLocalisation.nameFr  = pNameFr
+  if pNameEn: pLocalisation.nameEn  = pNameEn
+  if pCode  : pLocalisation.code    = pCode
 
   # Save the data
   pLocalisation.save()
@@ -157,6 +126,17 @@ def modif_localisation(pLocalisation: Localisation, pNameFr: str, pNameEn: str, 
 
   return True
 
+
+" -------------------------------------------------------------------------------------------------------------------- "
+def modif_localisation_type(pLocalisation: Localisation, pAdmin: AccountAdmin, pType: Type):
+  # TODO
+  pass
+
+
+" -------------------------------------------------------------------------------------------------------------------- "
+def modif_localisation_status(pLocalisation: Localisation, pAdmin: AccountAdmin, pStatus: Status):
+  # TODO
+  pass
 
 " -------------------------------------------------------------------------------------------------------------------- "
 def add_children(pParent: Localisation, pChildren: Localisation, pAdmin: AccountAdmin):

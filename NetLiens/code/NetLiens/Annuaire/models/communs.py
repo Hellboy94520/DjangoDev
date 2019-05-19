@@ -43,10 +43,10 @@ class Log(models.Model):
 
 
 class LogAdmin(Log):
-  user   = models.ForeignKey(AccountAdmin, on_delete=models.SET_NULL, null=True)
+	user   = models.ForeignKey(AccountAdmin, on_delete=models.SET_NULL, null=True)
 
-  class Meta:
-    abstract = True
+	class Meta:
+		abstract = True
 
 """
 class LogAll(Log):
