@@ -1,385 +1,410 @@
 import logging
-from ..models.localisation import Type, create_localisation, add_children, Localisation
-from ..models.communs import Status
-from ..models.account import AccountAdmin
-from django.db.models import Q
+from ..models.localisation import Localisation, LocalisationType
+from ..models.account import AccountAdmin, User
 
+# sudo pip3 install opencv
+import csv
 
-""" --------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Data
-------------------------------------------------------------------------------------------------------------------------
--------------------------------------------------------------------------------------------------------------------- """
+import re
+
 logger = logging.getLogger(__name__)
 
-lDir = '/Users/hellboy/Cozy Drive/dev/DjangoDev/NetLiens/doc/InseeSQL2017/'
-
-Continent = ["Europe,Europe,991",
-             "Asie,Asia,992",
-             "Afrique,Africa,993",
-             "Amérique,America,994",
-             "Océanie,Oceania,995"]
+""" --------------------------------------------------------------------------------------------------------------------
+Data
+-------------------------------------------------------------------------------------------------------------------- """
+_equivLoc = {}
 
 
 """ --------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Functions
-------------------------------------------------------------------------------------------------------------------------
+Localisation
 -------------------------------------------------------------------------------------------------------------------- """
-# Low all caracters after a letter and delete the part with '('
-def lower_libcog(pString: str):
-	if   pString == "GRECE":      return "Grèce"
-	elif pString == "MACEDOINE":  return "Macédoine"
-	elif pString == "NORVEGE":    return "Norvège"
-	elif pString == "SUEDE":      return "Suède"
-	elif pString == "YEMEN (REPUBLIQUE ARABE DU)": return "Yémen"
-	elif pString == "THAILANDE":  return "Thaïlande"
-	elif pString == "NEPAL":      return "Népal"
-	elif pString == "BIRMANIE":   return "Birmanie"
-	elif pString == "KOWEIT":     return "Koweït"
-	elif pString == "ISRAEL":     return "Israël"
-	elif pString == "INDONESIE":  return "Indonésie"
-	elif pString == "COREE":      return "Corée"
-	elif pString == "ARMENIE":    return "Arménie"
-	elif pString == "BRESIL":     return "Brésil"
-	elif pString == "GUATEMALA":  return "Guatémala"
-	elif pString == "PEROU":      return "Pérou"
-	elif pString == "VENEZUELA":  return "Vénézuéla"
-	elif pString == "ALGERIE":    return "Algérie"
-	elif pString == "BENIN":      return "Bénin"
-	elif pString == "GUINEE":     return "Guinée"
-	elif pString == "SENEGAL":    return "Sénégal"
-	elif pString == "NOUVELLE-ZELANDE":       return "Nouvelle-Zélande"
-	elif pString == "BIELORUSSIE":  return "Biélorussie"
-	elif pString == "BOSNIE-HERZEGOVINE":     return "Bosnie-Herzégovine"
-	elif pString == "FEROE (ILES)": return "Féroé (Îles)"
-	elif pString == "IRLANDE, ou EIRE":       return "Irlande"
-	elif pString == "VIET NAM":   return "Viêt Nam"
-	elif pString == "ETATS-UNIS": return "États-Unis"
-	elif pString == "BURKINA":    return "Burkina Faso"
-	elif pString == "POLYNESIE FRANCAISE":    return "Polynésie Française"
-	elif pString == "NOUVELLE-CALEDONIE":     return "Nouvelle-Calédonie"
-
-	lString = pString[0]
-	for i in range(1, len(pString)):
-		# If Previous caracter was a letter
-		if 65 <= ord(pString[i-1]) <= 90 : lString += pString[i].lower()
-		# If ( caracter, stop the conversion and delete all after (include space)
-		elif pString[i] == "(":
-			if   pString[i:] == "(ILE)":
-				lString += "(Île)"
-				return lString
-			elif pString[i:] == "(ILES)":
-				lString += "(Île)"
-				return lString
-			elif pString[i:] == "(REPUBLIQUE)":
-				lString += "(République)"
-				return lString
-			elif pString[i:] == "(REPUBLIQUE DEMOCRATIQUE)":
-				lString += "(République démocratique du)"
-				return lString
-			return lString[:-1]
-		else: lString += pString[i]
-	return lString
-
-
-# Return Continent localisation associated to COG
-def get_continent_parent(pCode: str):
-	lResult = None
-	# Only the three first numbers are usefull
-	if   pCode[:3] == "991": lResult = Localisation.objects.filter(nameFr='Europe'  , type=Type.CO)
-	elif pCode[:3] == "992": lResult = Localisation.objects.filter(nameFr='Asie'    , type=Type.CO)
-	elif pCode[:3] == "993": lResult = Localisation.objects.filter(nameFr='Afrique' , type=Type.CO)
-	elif pCode[:3] == "994": lResult = Localisation.objects.filter(nameFr='Amérique', type=Type.CO)
-	elif pCode[:3] == "995": lResult = Localisation.objects.filter(nameFr='Océanie' , type=Type.CO)
-
-	if lResult is not None and len(lResult) == 1:
-		return lResult[0]
-	return None
-
-
-def create_localisation_models(pAdmin: AccountAdmin):
-
-	logger.debug("[Localisation] Conversion starting...")
-
-	" Continents ------------------------------------------------------------------------------------------------------- "
-	lNum = 0
-	for lvalue in Continent:
-		lSplit = lvalue.split(",")
-		create_localisation(lSplit[0], lSplit[1], lSplit[2], Type.CO, Status.AC, pAdmin)
-		lNum += 1
-
-	logger.debug("[Localisation] {} Continents has been created".format(lNum))
-
-	" Countries -------------------------------------------------------------------------------------------------------- "
+def open_file(name: str):
 	try:
-		lFile = open(lDir+'pays2017.txt')
+		lFile = open(name)
 	except FileNotFoundError:
-		logger.error("Impossible to open {}".format(lFile.name))
-	else:
-		# Separate the file in line (without keeping the first one)
-		Lines = lFile.read().split("\n")[1:]
-		lNum = 0
+		logger.fatal("Impossible to open file {}".format(name))
+		return False
+	return lFile
 
-		# Separate each line in words
-		for i, line in enumerate(Lines):
-			words = line.split("\t")
-			# Checking the words quantity by line
-			if len(words) != 11:
-				logger.error("[Localisation] Incorrect word size in Insee file {}".format(lFile.name))
-				return False
-				# Checking
-			elif words[0] != "XXXXX":
-				lCountry = create_localisation(lower_libcog(words[5]), "", words[9], Type.CU,
-				                               Status.AC, pAdmin)
-				# Add country to a continent
-				lParent = get_continent_parent(words[0])
-				if lParent is not None: add_children(lParent, lCountry, pAdmin)
-				else: logger.error("[Localisation] Impossible to find the parent country with code COG \'{}\'".format(words[0]))
-				lNum += 1
 
-		logger.debug("[Localisation] {} countries has been created".format(lNum))
+""" ---------------------------------------------------------------------------------------------------------------- """
+def lower_libcog(name: str):
+	# Delete useless space
+	lName = re.sub(' +', ' ', name)
+	# Lower all letter
+	lName = lName.lower()
+	# Upper first letter of each word
+	lNameSplit = re.split(' ', lName)
+	lName = ""
+	for name in lNameSplit:
+		lName += name[0].upper()
+		lName += name[1:]
+		lName += " "
+	# Remove last useless space
+	lName = lName[:-1]
+	return lName
 
-	" RegionFR --------------------------------------------------------------------------------------------------------- "
-	try:
-		lFile = open(lDir+'reg2017.txt')
-	except FileNotFoundError:
-		logger.error("Impossible to open {}".format(lFile.name))
-	else:
-		# Separate the file in line (without keeping the first one)
-		Lines = lFile.read().split("\n")[1:]
-		lNum = 0
 
-		# Separate each line in words
-		for i, line in enumerate(Lines):
-			words = line.split("\t")
-			# Checking the words quantity by line
-			if len(words) != 5:
-				logger.error("[Localisation] Incorrect word size in Insee file {}".format(lFile.name))
-				return False
-			else:
-				lRegion = create_localisation(words[4], "", words[0], Type.RE, Status.AC, pAdmin)
-				lParent = Localisation.objects.filter(nameFr="France", type=Type.CU)
-				if len(lParent) == 1: add_children(lParent[0], lRegion, pAdmin)
-				else: logger.error("[Localisation] Impossible to find France country")
-				lNum += 1
+""" ---------------------------------------------------------------------------------------------------------------- """
+def load_data(settings):
+	dir      = settings.get('INSEE', 'dir')
+	country  = settings.get('INSEE', 'country')  + settings.get('INSEE', 'ext')
+	regionFr = settings.get('INSEE', 'regionFr') + settings.get('INSEE', 'ext')
+	departFr = settings.get('INSEE', 'departFr') + settings.get('INSEE', 'ext')
+	citiesFr = settings.get('INSEE', 'citiesFr') + settings.get('INSEE', 'ext')
+	associat = settings.get('INSEE', 'associat') + settings.get('INSEE', 'ext')
+	return dir, country, regionFr, departFr, citiesFr, associat
 
-		logger.debug("[Localisation] {} regionfr has been created".format(lNum))
 
-	" DepartementFR ---------------------------------------------------------------------------------------------------- "
-	try:
-		lFile = open(lDir+'depts2017.txt')
-	except FileNotFoundError:
-		logger.error("Impossible to open {}".format(lFile.name))
-	else:
-		# On sépares chaque ligne en supprimant la première :
-		Lines = lFile.read().split("\n")[1:]
-		lNum = 0
+""" ---------------------------------------------------------------------------------------------------------------- """
+def create_localisation_models(settings, admin: AccountAdmin, sqlcursor):
+	""" Load data ----------------------------------------- """
+	lDir, lCountryFileName, lRegionFrFileName, lDepartFrFileName, lCitiesFrFileName, lAssoc = load_data(settings)
 
-		# Pour chaque ligne séparée, on sépare les mots
-		for i, line in enumerate(Lines):
-			words = line.split("\t")
-			# On vérifie qu'il en a bien 7
-			if len(words) != 6:
-				logger.error("[Localisation] Incorrect word size in Insee file {}".format(lFile.name))
-				return False
-			else:
-				lDepartement = create_localisation(words[5], "", words[1], Type.DE, Status.AC, pAdmin)
-				lParent = Localisation.objects.filter(code=words[0], type=Type.RE)
-				if len(lParent) == 1: add_children(lParent[0], lDepartement, pAdmin)
-				else: logger.error("[Localisation] Impossible to find the region with code {}".format(words[0]))
-				lNum += 1
+	""" Open files ---------------------------------------- """
+	lCountryFile = open_file(lDir+lCountryFileName)
+	if lCountryFile is False:  return False
+	lRegionFrFile = open_file(lDir+lRegionFrFileName)
+	if lRegionFrFile is False: return False
+	lDepartFrFile = open_file(lDir+lDepartFrFileName)
+	if lDepartFrFile is False: return False
+	lCitiesFrFile = open_file(lDir+lCitiesFrFileName)
+	if lCitiesFrFile is False: return False
+	lAssocFile = open_file(lDir+lAssoc)
+	if lAssocFile is False: return False
 
-		logger.debug("[Localisation] {} regionfr has been created".format(lNum))
+	""" Unknown ------------------------------------------- """
+	lUnknow   = Localisation(nameFr = "Inconnue",
+		                       nameEn = "Unknown",
+		                       type = LocalisationType.UN)
+	lUnknow.create(admin)
 
-	"""
-	" CityFR ----------------------------------------------------------------------------------------------------------- "
-	try:
-		lFile = open(lDir+'city2017.txt')
-	except FileNotFoundError:
-		logger.error("Impossible to open {}".format(lFile.name))
-	else:
-		# On sépares chaque ligne en supprimant la première :
-		Lines = lFile.read().split("\n")[1:]
-		lNum = 0
+	""" Continents ---------------------------------------- """
+	lEurope   = Localisation(nameFr = "Europe",
+		                       nameEn = "Europe",
+		                       code = 991,
+		                       type = LocalisationType.CO)
+	lEurope.create(admin)
+	lAsia     = Localisation(nameFr = "Asie",
+		                       nameEn = "Asia",
+		                       code = 992,
+		                       type = LocalisationType.CO)
+	lAsia.create(admin)
+	lAfrica   = Localisation(nameFr = "Afrique",
+		                       nameEn = "Africa" ,
+		                       code = 993,
+		                       type = LocalisationType.CO)
+	lAfrica.create(admin)
+	lAmerica  = Localisation(nameFr = "Amérique",
+		                       nameEn = "America" ,
+		                       code = 994,
+		                       type = LocalisationType.CO)
+	lAmerica.create(admin)
+	lOceania  = Localisation(nameFr = "Océanie",
+		                       nameEn = "Oceania" ,
+		                       code = 995,
+		                       type = LocalisationType.CO)
+	lOceania.create(admin)
 
-		# Pour chaque ligne séparée, on sépare les mots
-		for i, line in enumerate(Lines):
-			words = line.split("\t")
-			# On vérifie qu'il en a bien 12
-			if len(words) != 12:
-				logger.error("[Localisation] Incorrect word size in Insee file {}".format(lFile.name))
-				return False
-			else:
-				lCity = create_localisation(words[11], words[11], words[3]+words[4], Type.CI, Status.AC, pAdmin)
-				lParent = Localisation.objects.filter(code=words[3], type=Type.DE)
-				if len(lParent) == 1: add_children(lParent[0], lCity, pAdmin)
-				else: logger.error("[Localisation] Impossible to find the department with code {}".format(words[3]))
-				lNum += 1
+	""" Country ------------------------------------------- """
+	# Open file with cvs
+	# TODO: Voir pour l'option "actual" dans le fichier des pays
+	lParthCountry = csv.DictReader(lCountryFile)
+	# Get all country
+	for lParam in lParthCountry:
+		if    (lParam.get("cog") != "XXXXX" and lParam.get("actual") == "1") \
+			or lParam.get("libcog")=="FRANCE":
+			lCountry = Localisation(nameFr  = lower_libcog(lParam.get("libcog")),
+			                        code    = lParam.get("codeiso3"),
+			                        type    = LocalisationType.CU,
+			                        display = True)
+			lCountry.create(admin)
+			# Search the parent
+			if   lParam.get("cog")[:3] == "991": lCountry.set_parent(Localisation.objects.get(nameFr='Europe',
+			                                                                                  type=LocalisationType.CO), admin)
+			elif lParam.get("cog")[:3] == "992": lCountry.set_parent(Localisation.objects.get(nameFr='Asie',
+			                                                                                  type=LocalisationType.CO), admin)
+			elif lParam.get("cog")[:3] == "993": lCountry.set_parent(Localisation.objects.get(nameFr='Afrique',
+			                                                                                  type=LocalisationType.CO), admin)
+			elif lParam.get("cog")[:3] == "994": lCountry.set_parent(Localisation.objects.get(nameFr='Amérique',
+			                                                                                  type=LocalisationType.CO), admin)
+			elif lParam.get("cog")[:3] == "995": lCountry.set_parent(Localisation.objects.get(nameFr='Océanie',
+			                                                                                  type=LocalisationType.CO), admin)
 
-		logger.debug("[Localisation] {} cityfr has been created".format(lNum))
-	"""
+		elif lParam.get("cog") == "XXXXX" and (lParam.get("libcog") == "POLYNESIE FRANCAISE"          or
+		                                       lParam.get("libcog") == "NOUVELLE-CALEDONIE"           or
+																					 lParam.get("libcog") == "SAINT-PIERRE-ET-MIQUELON"     or
+																					 lParam.get("libcog") == "TERRES AUSTRALES FRANCAISES"  or
+																					 lParam.get("libcog") == "WALLIS-ET-FUTUNA"             or
+																					 lParam.get("libcog") == "CLIPPERTON (ILE)"             or
+																					 lParam.get("libcog") == "SAINT-BARTHELEMY"             or
+																					 lParam.get("libcog") == "SAINT-MARTIN"
+		):
+			lTerritory = Localisation(nameFr  = lower_libcog(lParam.get("libcog")),
+			                          code    = lParam.get("codeiso3"),
+			                          type    = LocalisationType.TE,
+			                          display = True)
+			lTerritory.create(admin)
+			lFrance = Localisation.objects.get(nameFr="France", type=LocalisationType.CU)
+			lTerritory.set_parent(lFrance, admin)
+	lCountryFile.close()
 
-	return True
+	""" RegionFR ------------------------------------------ """
+	# Open file with cvs
+	lPathRegionFr = csv.DictReader(lRegionFrFile)
+	# Get all region
+	for lParam in lPathRegionFr:
+		lRegion = Localisation(nameFr = lParam.get("nccenr"),
+		                       nameEn = lParam.get("nccenr"),
+		                       code   = lParam.get("reg"),
+		                       type   = LocalisationType.RE)
+		lRegion.create(admin)
+		lFrance = Localisation.objects.get(nameFr="France", type=LocalisationType.CU)
+		lRegion.set_parent(lFrance, admin)
+	lRegionFrFile.close()
 
-def create_localisation_association(pSqlCursor, pAdmin: AccountAdmin):
+	""" DepartmentFr -------------------------------------- """
+	# Open file with cvs
+	lPathDepartFr = csv.DictReader(lDepartFrFile)
+	# Get all department
+	for lParam in lPathDepartFr:
+		lDepart = Localisation(nameFr = lParam.get("nccenr"),
+		                       nameEn = lParam.get("nccenr"),
+		                       code   = lParam.get("dep"),
+		                       type   = LocalisationType.DE)
+		lDepart.create(admin)
+		# Get the parent
+		lRegion = Localisation.objects.get(code=lParam.get("reg"),
+		                                   type=LocalisationType.RE)
+		lDepart.set_parent(lRegion, admin)
+	lDepartFrFile.close()
 
-	logger.debug("[Localisation] SQL Conversion starting...")
-	pSqlCursor.execute("SELECT * FROM annu_dept")
-	lSqlDept = pSqlCursor.fetchall()
+	""" CitiesFr ------------------------------------------ """
+	# # Open file with cvs
+	# lPathCitiesFr = csv.DictReader(lCitiesFrFile)
+	# # Get all city
+	# for lParam in lPathCitiesFr:
+	# 	if lParam.get("typecom") == "COM":
+	# 		lCities = Localisation(nameFr = lParam.get("nccenr"),
+	# 		                       nameEn = lParam.get("nccenr"),
+	# 		                       code   = lParam.get("com"),
+	# 		                       type   = LocalisationType.CI)
+	# 		lCities.create(admin)
+	# 		# Get the parent
+	# 		lDepart = Localisation.objects.get(code=lParam.get("dep"),
+	# 		                                   type=LocalisationType.DE)
+	# 		lCities.set_parent(lDepart, admin)
+	lCitiesFrFile.close()
+
+	""" Association --------------------------------------- """
+
+	# Get all annu_dept from old sql database
+	sqlcursor.execute("SELECT * FROM annu_dept")
+	lSqlDept = sqlcursor.fetchall()
+
+	# Associated each annu_dept in a localisation
+	# TODO: No case: 209, 210, 325, 503, 522, 566, 567, 573, 575, 598, 599
 	for (sId, sNom, sRegion, sIdZone) in lSqlDept:
-
-		lLoc = None
-
-		# Case for continent
-		if    202 <= sId <= 208 or sId == 211 or sId == 523:
-			lExpectedName = ""
-			if   sId == 202: lExpectedName = "Europe"     # Europe
-			elif sId == 203: lExpectedName = "Amérique"   # Amérique du Nord
-			elif sId == 204: lExpectedName = "Amérique"   # Amérique centrale-Sud
-			elif sId == 205: lExpectedName = "Afrique"    # Afrique du Nord
-			elif sId == 206: lExpectedName = "Afrique"    # Afrique Centrale-Australe
-			elif sId == 207: lExpectedName = "Asie"       # Moyen Orient-Asie
-			elif sId == 208: lExpectedName = "Océanie"    # Océanie-Australie
-			elif sId == 211: lExpectedName = "Océanie"    # Océan Indien
-			elif sId == 523: lExpectedName = "Afrique"    # Afrique du Sud
-
-			lLoc = Localisation.objects.filter(nameFr=lExpectedName, type=Type.CO)
-			if len(lLoc) != 1:
-				logger.error("[Localisation] Impossible to find \'{}\' continent".format(lExpectedName))
-				return False
-
-		# Other special case
-		elif  sId == 209:
-			# TODO:
-			pass
-		elif  sId == 210:
-			# TODO:
-		  pass
-		# DOM TOM
-		elif  sId == 325:
-			# TODO:
-		  pass
-		# ???
-		elif  sId == 503 or sId == 522 or sId == 566 or sId == 567 or sId == 573 or sId == 575 or sId == 598 or sId == 599:
-			# TODO:
-		  pass
-		# Antille-Guyane, Réunion
-		elif sId == 973 or sId == 974:
-			if    sId == 973: lExpectedName = "Guyane"
-			elif  sId == 974: lExpectedName = "La Réunion"
-			lLoc = Localisation.objects.filter(nameFr=lExpectedName, type=Type.RE)
-			if len(lLoc) != 1:
-				logger.error("[Localisation] Impossible to find \'{}\' region".format(lExpectedName))
-				return False
-		# Polynésie Françaises
-		elif sId == 998 or sId == 999:
-			if   sId == 998:  lExpectedName = "Polynésie Française"
-			elif sId == 999:  lExpectedName = "Nouvelle-Calédonie"
-			lLoc = Localisation.objects.filter(nameFr=lExpectedName, type=Type.CU)
-			if len(lLoc) != 1:
-				logger.error("[Localisation] Impossible to find \'{}\' country".format(lExpectedName))
-				return False
-		# Unknown
-		elif  sId == 9999:
-			# TODO:
-		 pass
-
-
-		# Commun case
-		else:
-			# Searching the information type
-			lType = Type.UN
-			if   sIdZone == 0:  lType = Type.RE  # French Region
-			elif sIdZone == 1:  lType = Type.DE  # Department
-			elif sIdZone == 2:  lType = Type.CU  # Europe
-			elif sIdZone == 3:  lType = Type.CU  # North America
-			elif sIdZone == 4:  lType = Type.CU  # South America
-			elif sIdZone == 5:  lType = Type.CU  # North Africa
-			elif sIdZone == 6:  lType = Type.CU  # South Africa
-			elif sIdZone == 7:  lType = Type.CU  # Asia
-			elif sIdZone == 8:  lType = Type.CU  # Oceania
-			elif sIdZone == 11: lType = Type.CU  # Oceania
-
-			if lType == Type.UN:
-				logger.error("[Localisation] Impossible to find the type of an annu_dept with id_zone=\'{}\'".format(sIdZone))
-				return False
-
-			# Specials cases:
-			lExpectedName = sNom
-			if   sNom == "Alpes de Hautes-Provence": lExpectedName = "Alpes-de-Haute-Provence"  # Spelling error
-			elif sNom == "Corse" and sIdZone==1:                                                # Two Department in one
-				lType = Type.DE
-				lExpectedName = "Haute-Corse"
-			elif sNom == "Côtes d'Armor": lExpectedName = "Côtes-d'Armor"                       # Spelling error
-			elif sNom == "Territoire-de-Belfort": lExpectedName = "Territoire de Belfort"       # Spelling error
-			elif sNom == "Nord Pas de Calais" or sNom == "Picardie":                            # Modification in 2017
-				lExpectedName = "Hauts-de-France"
-			elif sNom == "Basse Normandie" or sNom == "Haute Normandie":                        # Modification in 2017
-				lExpectedName = "Normandie"
-			elif sNom == "Ile De France": lExpectedName = "Île-de-France"                       # Spelling error
-			elif sNom == "Centre": lExpectedName = "Centre-Val de Loire"                        # Modification in 2017
-			elif sNom == "Alsace" or sNom == "Champagne Ardenne" or sNom == "Lorraine":         # Modification in 2017
-				lExpectedName = "Grand Est"
-			elif sNom == "Bourgogne" or sNom == "Franche Comté":                                # Modification in 2017
-				lExpectedName = "Bourgogne-Franche-Comté"
-			elif sNom == "Aquitaine" or sNom == "Poitou Charentes" or sNom == "Limousin":       # Modification in 2017
-				lExpectedName = "Nouvelle-Aquitaine"
-			elif sNom == "Auvergne" or sNom == "Rhônes Alpes":                                  # Modification in 2017
-				lExpectedName = "Auvergne-Rhône-Alpes"
-			elif sNom == "PACA": lExpectedName = "Provence-Alpes-Côte d'Azur"                   # Spelling error
-			elif sNom == "Midi Pyrénées" or sNom == "Languedoc Rousillon":                      # Modification in 2017
-				lExpectedName = "Occitanie"
-			elif sNom == "Macédoine": lExpectedName = "Ex-Republique Yougoslave De Macedoine"   # Spelling error
-			elif sNom == "Vietnam": lExpectedName = "Viêt Nam"                                  # Spelling error
-			elif sNom == "Tibet"  : lExpectedName = "Chine"                                     # Tibet is not a country
-			elif sNom == "Myanmar (Birmanie)": lExpectedName = "Birmanie"                       # Spelling error
-			elif sNom == "Irak": lExpectedName = "Iraq"                                         # Spelling error
-			elif sNom == "Hong Kong": lExpectedName = "Hong-Kong"                               # Spelling error
-			elif sNom == "Etats unis": lExpectedName = "États-Unis"                             # Spelling error
-			elif sNom == "Canada &amp; Quebec": lExpectedName = "Canada"                        # Spelling error
-			elif sNom == "Cap Vert": lExpectedName = "Cap-Vert"                                 # Spelling error
-			elif sNom == "Centrafrique": lExpectedName = "Centrafricaine (République)"          # Spelling error
-			elif sNom == "Cote d'Ivoire": lExpectedName = "Cote D'Ivoire"                       # Spelling error
-			elif sNom == "Sahara occidental": lExpectedName = "Sahara Occidental"               # Spelling error
-			elif sNom == "Nouvelle Zelande": lExpectedName = "Nouvelle-Zélande"                 # Spelling error
-			elif sNom == "Ile Maurice": lExpectedName = "Maurice"                               # Spelling error
-			elif sNom == "Boznie Herzégovine": lExpectedName = "Bosnie-Herzégovine"             # Spelling error
-			elif sNom == "Iles Féroé": lExpectedName = "Féroé (Îles)"                           # Spelling error
-			elif sNom == "Letonie": lExpectedName = "Lettonie"                                  # Spelling error
-			elif sNom == "Saint Marin": lExpectedName = "Saint-Marin"                           # Spelling error
-			elif sNom == "Yougoslavie": lExpectedName = "Ex-Republique Yougoslave De Macedoine" # Spelling error
-			elif sNom == "Antilles (hors DOM-TOM)": lExpectedName = "Territoires Du Royaume-Uni Aux Antilles" # Spelling error
-
-			lLoc = Localisation.objects.filter(nameFr=lExpectedName, type=lType)
-			if len(lLoc) != 1:
-				logger.error("[Localisation] Impossible to find localisation with name \'{}\'".format(lExpectedName))
-				return False
-
-		# TODO: Modification d'un QuerySet impossible car copy de l'object
-		if lLoc is not None:
-			if lLoc[0].nameEn == "":
-				lLoc[0].nameEn = str(sId)
-				lLoc[0].save()
+		# Departement
+		if    1 < sId < 95 or sId == 973 or sId == 974:
+			# Particular case for Corse
+			if sId == 20:
+				_equivLoc[sId] = Localisation.objects.get(type=LocalisationType.DE, code="2A")
 			else:
-				lLoc[0].nameEn += ",{}".format(str(sId))
-				lLoc[0].save()
+				_equivLoc[sId] = Localisation.objects.get(type=LocalisationType.DE, code="{:02d}".format(sId))
+		# Continent
+		elif  202 < sId < 208 or sId == 211:
+			lCode = ""
+			if   sId == 202:                lCode = "991"  # Europe
+			elif sId == 203 or sId == 204:  lCode = "994"  # America
+			elif sId == 205 or sId == 206:  lCode = "993"  # Africa
+			elif sId == 207 :               lCode = "992"  # Asie
+			elif sId == 208 or sId == 211:  lCode = "995"  # Oceania
+			_equivLoc[sId] = Localisation.objects.get(type=LocalisationType.CO, code=lCode)
 
-	logger.debug("[Localisation] SQL Conversion done")
+		# Country
+		elif sId == 201 or 401 < sId < 572 or sId == 576 or 600 < sId < 621:
+			lCode = ""
+			if   sId == 201 or 401: lCode = "FRA"
+			elif sId == 402       : lCode = "DEU"
+			elif sId == 403       : lCode = "AUT"
+			elif sId == 404       : lCode = "BEL"
+			elif sId == 405       : lCode = "CYP"
+			elif sId == 406       : lCode = "DNK"
+			elif sId == 407       : lCode = "ESP"
+			elif sId == 408       : lCode = "FIN"
+			elif sId == 410       : lCode = "GRC"
+			elif sId == 411       : lCode = "HUN"
+			elif sId == 412       : lCode = "IRL"
+			elif sId == 413       : lCode = "ISL"
+			elif sId == 414       : lCode = "ITA"
+			elif sId == 415       : lCode = "LUX"
+			elif sId == 416       : lCode = "MKD"
+			elif sId == 417       : lCode = "MLT"
+			elif sId == 418       : lCode = "MCO"
+			elif sId == 419       : lCode = "NOR"
+			elif sId == 420       : lCode = "NLD"
+			elif sId == 421       : lCode = "POL"
+			elif sId == 422       : lCode = "PRT"
+			elif sId == 423       : lCode = "ROU"
+			elif sId == 424       : lCode = "GBR"
+			elif sId == 425       : lCode = "SWE"
+			elif sId == 426       : lCode = "CHE"
+			elif sId == 427       : lCode = "UKR"
+			elif sId == 463       : lCode = "YEM"
+			elif sId == 464       : lCode = "VNM"
+			elif sId == 465       : lCode = "TUR"
+			elif sId == 466       : lCode = ""    # Tibet
+			elif sId == 467       : lCode = "THA"
+			elif sId == 468       : lCode = "TWN"
+			elif sId == 469       : lCode = ""    # Sirie
+			elif sId == 470       : lCode = "LKA"
+			elif sId == 471       : lCode = "SGP"
+			elif sId == 472       : lCode = "PHL"
+			elif sId == 473       : lCode = "PSE"
+			elif sId == 474       : lCode = "PAK"
+			elif sId == 475       : lCode = "NPL"
+			elif sId == 476       : lCode = "MMR"
+			elif sId == 477       : lCode = "MNG"
+			elif sId == 478       : lCode = "MDV"
+			elif sId == 479       : lCode = "MYS"
+			elif sId == 480       : lCode = "LBN"
+			elif sId == 481       : lCode = "LAO"
+			elif sId == 482       : lCode = "KWT"
+			elif sId == 483       : lCode = "JOR"
+			elif sId == 484       : lCode = "JPN"
+			elif sId == 485       : lCode = "ISR"
+			elif sId == 486       : lCode = "IRN"
+			elif sId == 487       : lCode = "IRQ"
+			elif sId == 488       : lCode = "IDN"
+			elif sId == 489       : lCode = "IND"
+			elif sId == 490       : lCode = ""    # Hong Kong
+			elif sId == 491       : lCode = "ARE"
+			elif sId == 492       : lCode = "KOR"   # Corée
+			elif sId == 493       : lCode = "CHN"
+			elif sId == 494       : lCode = "KHM"
+			elif sId == 495       : lCode = "BTN"
+			elif sId == 496       : lCode = "BGD"
+			elif sId == 497       : lCode = "ARM"
+			elif sId == 498       : lCode = "SAU"
+			elif sId == 499       : lCode = "AFG"
+			elif sId == 500       : lCode = "USA"
+			elif sId == 501       : lCode = "CAN"
+			elif sId == 502       : lCode = "MEX"
+			elif sId == 503       : lCode = ""    # UNKNOWN
+			elif sId == 504       : lCode = "ARG"
+			elif sId == 505       : lCode = "CRI"
+			elif sId == 506       : lCode = "BOL"
+			elif sId == 507       : lCode = "BLZ"
+			elif sId == 508       : lCode = "BRA"
+			elif sId == 509       : lCode = "CHL"
+			elif sId == 510       : lCode = "COL"
+			elif sId == 511       : lCode = "ECU"
+			elif sId == 512       : lCode = "GTM"
+			elif sId == 513       : lCode = "GUY"
+			elif sId == 514       : lCode = "HND"
+			elif sId == 515       : lCode = "NIC"
+			elif sId == 516       : lCode = "PAN"
+			elif sId == 517       : lCode = "PRY"
+			elif sId == 518       : lCode = "PER"
+			elif sId == 519       : lCode = "PRI"
+			elif sId == 520       : lCode = "URY"
+			elif sId == 521       : lCode = "VEN"
+			elif sId == 522       : lCode = ""    # UNKNOWN
+			elif sId == 523       : lCode = "ZAF"
+			elif sId == 524       : lCode = "DZA"
+			elif sId == 525       : lCode = "AGO"
+			elif sId == 526       : lCode = "BEN"
+			elif sId == 527       : lCode = "BFA"
+			elif sId == 528       : lCode = "CMR"
+			elif sId == 529       : lCode = "CPV"
+			elif sId == 530       : lCode = "CAF"
+			elif sId == 531       : lCode = "COM"
+			elif sId == 532       : lCode = "COD"
+			elif sId == 533       : lCode = "CIV"
+			elif sId == 534       : lCode = "DJI"
+			elif sId == 535       : lCode = "EGY"
+			elif sId == 536       : lCode = "ETH"
+			elif sId == 537       : lCode = "GAB"
+			elif sId == 538       : lCode = "GMB"
+			elif sId == 539       : lCode = "GHA"
+			elif sId == 540       : lCode = "GIN"
+			elif sId == 541       : lCode = "KEN"
+			elif sId == 542       : lCode = "LBR"
+			elif sId == 543       : lCode = "LBY"
+			elif sId == 544       : lCode = "MDG"
+			elif sId == 545       : lCode = "MLI"
+			elif sId == 546       : lCode = "MAR"
+			elif sId == 547       : lCode = "MRT"
+			elif sId == 548       : lCode = "MOZ"
+			elif sId == 549       : lCode = "NAM"
+			elif sId == 550       : lCode = "NER"
+			elif sId == 551       : lCode = "NGA"
+			elif sId == 552       : lCode = "UGA"
+			elif sId == 553       : lCode = "RWA"
+			elif sId == 554       : lCode = "ESH"   # CODE = 4 !!!
+			elif sId == 555       : lCode = "SEN"
+			elif sId == 556       : lCode = "SYC"
+			elif sId == 557       : lCode = "SLE"
+			elif sId == 558       : lCode = "SOM"
+			elif sId == 559       : lCode = "SDN"
+			elif sId == 560       : lCode = "TZA"
+			elif sId == 561       : lCode = "TCD"
+			elif sId == 562       : lCode = "TGO"
+			elif sId == 563       : lCode = "TUN"
+			elif sId == 564       : lCode = "ZMB"
+			elif sId == 565       : lCode = "ZWE"
+			elif sId == 566       : lCode = ""  # UNKNOWN
+			elif sId == 567       : lCode = ""  # UNKNOWN
+			elif sId == 570       : lCode = "AUS"
+			elif sId == 571       : lCode = "NZL"
+			elif sId == 572       : lCode = "FJI"
+			elif sId == 573       : lCode = ""  # UNKNOWN
+			elif sId == 575       : lCode = ""  # UNKNOWN
+			elif sId == 576       : lCode = "MUS"
+			elif sId == 598       : lCode = ""  # UNKNOWN
+			elif sId == 599       : lCode = ""  # UNKNOWN
+			elif sId == 600       : lCode = "ALB"
+			elif sId == 601       : lCode = "AND"
+			elif sId == 603       : lCode = "BLR"
+			elif sId == 604       : lCode = "BIH"
+			elif sId == 605       : lCode = "BGR"
+			elif sId == 606       : lCode = "HRV"
+			elif sId == 607       : lCode = "EST"
+			elif sId == 608       : lCode = "FRO"   # CODE + 3 !!!
+			elif sId == 609       : lCode = "GIB"
+			elif sId == 610       : lCode = "GGY"
+			elif sId == 611       : lCode = "LVA"
+			elif sId == 612       : lCode = "LIE"
+			elif sId == 613       : lCode = "LTU"
+			elif sId == 614       : lCode = "MDA"
+			elif sId == 615       : lCode = "UKR"  # TCHECOSLOVAQUIE
+			elif sId == 616       : lCode = "RUS"
+			elif sId == 617       : lCode = "SXM"
+			elif sId == 618       : lCode = "SVK"
+			elif sId == 619       : lCode = "SVN"
+			elif sId == 620       : lCode = "MKD"
+			elif sId == 621       : lCode = ""    # ANTILLE-NEERLANDAISES
 
+			if lCode:
+				_equivLoc[sId] = Localisation.objects.get(type=LocalisationType.CU, code=lCode)
 
-# TODO: Modification d'un QuerySet impossible car copy de l'object
-def reset_localisation_useless_data():
-	# Reset resumeEn and put correct data in Continent
-	for i, lLoc in enumerate(Localisation.objects.filter(type=Type.CO)):
-		lSplit = Continent[i].split(",")
-		lLoc.nameEn = lSplit[1]
-		lLoc.save()
+		# Territory
+		elif sId == 998 or sId == 999:
+			if sId == 998:
+				_equivLoc[sId] = Localisation.objects.get(type=LocalisationType.TE, code="PYF")
+			if sId == 999:
+				_equivLoc[sId] = Localisation.objects.get(type=LocalisationType.TE, code="NCL")
+		elif sId == 9999:
+			_equivLoc[sId] = Localisation.objects.get(type=LocalisationType.UN)
 
-	for lLoc in Localisation.objects.filter(Q(type=Type.RE) |  Q(type=Type.DE)):
-		lLoc.nameEn = lLoc.nameFr
-		lLoc.save()
+		if _equivLoc.get(sId, None) is None:
+			print("LOCALISATION ERROR: Impossible to find association with id={}".format(sId))
 
-	for lLoc in Localisation.objects.filter(type=Type.CU):
-		lLoc.nameEn = ""
-		lLoc.save()
+#
+#
+# def reset_localisation_useless_data():
+# 	for lLoc in Localisation.objects.all():
+# 		lLoc.sqlId = -1
+# 		lLoc.save()
+#

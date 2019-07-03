@@ -1,52 +1,45 @@
-import logging
-from ..models import AccountAdmin, Status, Category, create_category
+from ..models.account import AccountAdmin
+from ..models.category import Category
 
-logger = logging.getLogger(__name__)
-
+""" --------------------------------------------------------------------------------------------------------------------
+Data
+-------------------------------------------------------------------------------------------------------------------- """
+_equivCat = {}
 
 """ ------------------------------------------------------------------------------------------------------------------
 Category
 ------------------------------------------------------------------------------------------------------------------ """
-def create_category_models(pSqlCursor, pAdmin: AccountAdmin):
+def create_category_models(pSqlCursor, account: AccountAdmin):
 
-	logger.debug("[Category] Conversion starting...")
-
-	# key = Id (SQL), value = Category (MongoDb)
-	lEquivalence = {}
-
-	# Creation of new Category
+	""" Creation of the category """
 	pSqlCursor.execute("SELECT * FROM annu_cats")
 	lSqlCategory = pSqlCursor.fetchall()
 	for (sId, sName, sParent, sPriority, sShow, sLocked, sGeo, sType, sColor) in lSqlCategory:
 
-		if sShow:
-			lStatus = Status.AC
-		else:
-			lStatus = Status.UN
+		# Save temporarely oldId in nameEn and parentId in resumeFr
+		lCategory = Category(nameFr   = sName,
+		                     resumeFr = str(sParent),
+		                     display  = sShow)
+		lCategory.create(account)
+		_equivCat[sId] = CategoryPorting(sqlId=sId, sqlIdParent=sParent, category=lCategory)
 
-		# Save temporarely the  parent in nameEn
-		lCategory = create_category(sName, str(sParent), "", "", lStatus, pAdmin)
-		lEquivalence[sId] = lCategory
-
-	# Associated parent and children, only if status is available
-	for lId, lCategory in lEquivalence.items():
-		# Dans le cas ou il n'y a pas de parent
-		if int(lCategory.nameEn) == 0:
-			lCategory.save()
-		else:
-			lParent = lEquivalence.get(int(lCategory.nameEn), None)
-			# If parent is founded
+	""" Association parent-children """
+	for sId, sCategoryPorting in _equivCat.items():
+		if sCategoryPorting.sqlIdParent != 0:
+			lParent = _equivCat.get(sCategoryPorting.sqlIdParent, None)
 			if lParent is not None:
-				lCategory.nameEn = ""
-				lParent.children.add(lCategory)
-				lParent.save()
+				sCategoryPorting.category.set_parent(lParent, account)
 			else:
-				logger.error("[Category] Impossible to find the parent of {}-{}".format(lId, lCategory.nameFr))
+				sCategoryPorting.category.change_display(False, account, "No parent founded")
 
-	logger.debug("[Category] Conversion done")
+	return True
 
 
-def reset_category_useless_data():
-	for lCategory in Category.objects.all():
-		lCategory.nameEn = ""
-		lCategory.save()
+""" ------------------------------------------------------------------------------------------------------------------
+CategoryPorting
+------------------------------------------------------------------------------------------------------------------ """
+class CategoryPorting:
+	def __init__(self, sqlId: int, sqlIdParent: int, category: Category):
+		self.sqlId        = sqlId
+		self.sqlIdParent  = sqlIdParent
+		self.category     = category

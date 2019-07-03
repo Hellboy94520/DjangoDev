@@ -1,8 +1,40 @@
 from django.db import models
-from datetime import datetime, timedelta
-from .communs import Status, LogAdmin, Stat, CreationText, ModificationText, DeletionText
-from .account import AccountAdmin
+from .account import User, AccountAdmin
 from .category import Category
+from .localisation import Localisation
+from .stat import Stat
+# from .keyword import Keyword, create_new_keyword, is_exist
+
+from enum import Enum
+from datetime import datetime
+
+
+""" --------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+HOW TO USE
+
+- Site creation from an Administrator: 
+        lSite = Site(titleFr="toto", [...])
+        lSite.create(lAdminAccount)
+
+- Site request creation from a user: 
+        lSite = Site(titleFr="toto", [...])
+        lSite.request_creation(lUser)
+
+- Site change display status from an Administrator:
+        lSite.show(bool, lAccount)
+
+- Site modification from an Administrator only:
+        lSite.nameFr = "toto"
+        lSite.modification(lAdminAccount)
+
+- Site deletion from an Administrator only:
+        lSite.erase(lAccountAdmin)
+
+
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------- """
+
 
 """ --------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
@@ -10,6 +42,8 @@ Data
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
 titleMaxSize = 50
+reasonMaxSize = 50
+
 
 """ --------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
@@ -17,85 +51,156 @@ Class
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
 class Site(models.Model):
-	titre   = models.CharField(max_length=50)
-	content = models.TextField()
-	status  = models.CharField(max_length=2,
-	                           choices=[(tag, tag.value) for tag in Status],
-	                           default=Status.UN)
-	category = models.OneToOneField(Category, on_delete=models.CASCADE, primary_key=True)
+  objects = None
+  titleFr       = models.CharField(max_length=titleMaxSize, default="")
+  titleEn       = models.CharField(max_length=titleMaxSize, default="")
+  contentFr     = models.TextField(default="")
+  contentEn     = models.TextField(default="")
+  website       = models.URLField(default="")
+  nllevel       = models.IntegerField(max_length=10, default=0)
+  category      = models.ForeignKey(Category,     on_delete=models.CASCADE, null=True, default=None)
+  localisation  = models.ForeignKey(Localisation, on_delete=models.CASCADE, null=True, default=None)
+  display       = models.BooleanField(default=False)
+  # keywords      = models.ManyToManyField(Keyword)
 
-	def modif(self, pTitre: str, pContent: str, pAdmin: AccountAdmin):
-		# Prepare the log
-		lLog = ModificationText
-		# Modification only if it is
-		if pTitre and pTitre != self.titre:
-			lLog += " titre: {},".format(pTitre)
-			object.__setattr__(self, 'titre', pTitre)
-		if pContent and pContent != self.content:
-			lLog += " content: {},".format(pContent)
-			object.__setattr__(self, 'content', pContent)
-		# Save the data
-		if lLog == ModificationText: return False  # If any modification has been done
-		self.save()
-		SiteLog(lLog, self, pAdmin)
+  """ ---------------------------------------------------- """
+  def create(self, admin: AccountAdmin):
+    # Creation in database
+    self.save()
+    # Creation of the log
+    lDetails = "Creation of " + str(self)
+    lLog = SiteLog(user=admin.user,
+                   site=self,
+                   type=LogType.CR,
+                   details=lDetails)
+    lLog.save()
+    # Creation of the stat
+    lStat = SiteStat(localisation=self,
+                     creation_user=admin.user,
+                     validation_date=datetime.now(),
+                     validation_user=admin.user)
+    lStat.create()
 
-	def to_trash(self, pAdmin: AccountAdmin):
-		# TODO: Faire le système qui va vérifier s'il faut supprimer un objet ou non dans la poubelle
-		self.status = Status.TR
-		self.date = datetime.now() + timedelta(days=7)  # Date of deletion
-		SiteLog("{} {}".format(DeletionText, repr(self)), self, pAdmin)
+  """ ---------------------------------------------------- """
+  def request_creation(self, user:User):
+    # Creation in database
+    self.display = False
+    self.save()
+    # Creation of the log
+    lDetails = "Request Creation"
+    lSiteLog = SiteLog(user=user,
+                       site=self,
+                       type=LogType.RC,
+                       details=lDetails)
+    lSiteLog.save()
+    # Creation of the stat
+    lSiteStat = SiteStat(category=self, creation_user=user)
+    lSiteStat.create()
+    # Creation of the event
+    lSiteEvent = SiteEventCreationRequest(user 		= user,
+                                          site    = None)
+    lSiteEvent.save()
 
+  """ ---------------------------------------------------- """
+  def modification(self, user: User):
+    # Save the data
+    self.save()
+    # Creation of the log
+    lDetails = "Modification of '" + str(self) + "'"
+    lLog = SiteLog(user     = user,
+                   site     = self,
+                   type     = LogType.MO,
+                   details  = lDetails)
+    lLog.save()
 
-" -------------------------------------------------------------------------------------------------------------------- "
-class SiteStat(Stat):
-	site = models.OneToOneField(Site, on_delete=models.CASCADE, primary_key=True)
+  """ ---------------------------------------------------- """
+  def get_logs(self):
+    return SiteLog.objects.filter(site=self)
 
+  """ ---------------------------------------------------- """
+  def get_stat(self):
+    return SiteStat.objects.get(site=self)
 
-""" ---------------------------------------------------------------------------------------------------------------- """
-class SiteLog(LogAdmin):
-	site  = models.ForeignKey(Site, on_delete=models.CASCADE)
+  """ ---------------------------------------------------- """
+  def __repr__(self):
+    return "Site : titleFr={}, titleEn={}, contentFr={}, contentEn={}, website={}, nllevel={}"\
+      .format(self.titleFr, self.titleEn, self.contentFr, self.contentEn,
+              self.website, self.NLlevel)
 
 
 """ --------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
-Class Functions
+Class Event
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------- """
-def create_site_stat(pSite: Site):
-	lStat = SiteStat()
-	lStat.site = pSite
-	lStat.save()
+class SiteEventCreationRequest(models.Model):
+  objects = None
+  date     = models.DateTimeField(default=datetime.now())
+  saw      = models.BooleanField(default=False)
+  user     = models.ForeignKey(User, on_delete=models.CASCADE)
+  site     = models.ForeignKey(Site, on_delete=models.CASCADE)
 
-def create_site_log(pModif: str, pSite: Site, pAdmin: AccountAdmin):
-	lLog = SiteLog()
-	lLog.user   = pAdmin
-	lLog.site   = pSite
-	lLog.modif  = pModif
-	lLog.save()
+  """ ---------------------------------------------------- """
+  def accept(self, admin: AccountAdmin):
+    # Creation of the log
+    lDetail = "Request Accept from '" + admin.user.username + "'"
+    lSiteLog = SiteLog(user     = admin.user   ,
+                       site     = self.site,
+                       type     = LogType.CR   ,
+                       details  = lDetail)
+    lSiteLog.save()
+    # Complete the Stat object
+    lSiteStat = self.site.get_stat()
+    lSiteStat.validation_date = datetime.now()
+    lSiteStat.validation_user = admin.user
+    lSiteStat.save()
+    # Display the category on website
+    self.site.display = True
+    self.site.save()
+    # Delete the event
+    self.delete()
 
-def create_site(pTitre: str, pContent: str, pAdmin: AccountAdmin):
-	lSite = Site()
-	lSite.titre = pTitre
-	lSite.content = pContent
-	lSite.status = Status.UA
-	lSite.save()
+  """ ---------------------------------------------------- """
+  def refuse(self, admin: AccountAdmin):
+    # Delete the category and the event (by cascade)
+    self.site.delete()
 
-	# Creation of SiteStat link to Site
-	create_site_stat(lSite)
+  """ ---------------------------------------------------- """
+  def __str__(self):
+    return "date={}, user_email={}, site_name={}, saw={}"\
+      .format(self.date, self.user.email, self.site.nameFr, self.saw)
 
-	# Creation of SiteLog link to Site
-	create_site_log("{}{}".format(CreationText, repr(lSite)), lSite, pAdmin)
 
-	# Return the new Category
-	return lSite
+""" --------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+Class Log
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------- """
+class LogType(Enum):
+  # TODO
+  UN = "unknown"
+  RC = "creation_request"
+  RM = "modification_request"
+  CR = "creation"
+  MO = "modification"
 
 
 """ ---------------------------------------------------------------------------------------------------------------- """
-def modif_site(pSite: Site, pTitre: str, pContent: str, pAdmin: AccountAdmin):
-	pSite.titre   = pTitre
-	pSite.content = pContent
-	pSite.save()
+class SiteLog(models.Model):
+  objects = None
+  date      = models.DateTimeField(default=datetime.now())
+  user      = models.ForeignKey(User, default=None, null=True, on_delete=models.SET_NULL)
+  site      = models.ForeignKey(Site, on_delete=models.CASCADE)
+  type      = models.CharField(max_length=2,
+                               choices=[(tag, tag.value) for tag in LogType],
+                               default=LogType.UN)
+  details   = models.TextField(default="")
 
-	create_site_log("{}{}".format(ModificationText, repr(pSite)))
 
-	return True
+""" --------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+Class Stat
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------- """
+class SiteStat(Stat):
+  site = models.OneToOneField(Site, on_delete=models.CASCADE, primary_key=True)
