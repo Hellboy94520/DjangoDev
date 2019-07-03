@@ -7,5 +7,7 @@ urlpatterns = [
   #TODO: Pour exemple, a supprimer plus tard
   path('create_category', views.create_example_category),
   path('delete_category', views.delete_category),
-  path('conversion', views.conversion)
+  path('conversion', views.conversion),
+  path('reset', views.reset),
+  path('test', views.test)
 ]

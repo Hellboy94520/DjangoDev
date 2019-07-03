@@ -1,52 +1,46 @@
-import logging
-from ..models import AccountAdmin, Status, Category, create_category
-
-logger = logging.getLogger(__name__)
+from ..models.account import AccountAdmin, User
+from ..models.category import Category
 
 
 """ ------------------------------------------------------------------------------------------------------------------
 Category
 ------------------------------------------------------------------------------------------------------------------ """
-def create_category_models(pSqlCursor, pAdmin: AccountAdmin):
+def create_category_models(pSqlCursor, account: AccountAdmin):
 
-	logger.debug("[Category] Conversion starting...")
-
-	# key = Id (SQL), value = Category (MongoDb)
-	lEquivalence = {}
-
-	# Creation of new Category
+	""" Creation of the category """
 	pSqlCursor.execute("SELECT * FROM annu_cats")
 	lSqlCategory = pSqlCursor.fetchall()
 	for (sId, sName, sParent, sPriority, sShow, sLocked, sGeo, sType, sColor) in lSqlCategory:
 
-		if sShow:
-			lStatus = Status.AC
-		else:
-			lStatus = Status.UN
+		# Save temporarely oldId in nameEn and parentId in resumeFr
+		lCategory = Category(nameFr   = sName,
+		                     nameEn   = str(sId),
+		                     resumeFr = str(sParent),
+		                     display  = sShow)
+		lCategory.create(account)
 
-		# Save temporarely the  parent in nameEn
-		lCategory = create_category(sName, str(sParent), "", "", lStatus, pAdmin)
-		lEquivalence[sId] = lCategory
-
-	# Associated parent and children, only if status is available
-	for lId, lCategory in lEquivalence.items():
-		# Dans le cas ou il n'y a pas de parent
-		if int(lCategory.nameEn) == 0:
-			lCategory.save()
-		else:
-			lParent = lEquivalence.get(int(lCategory.nameEn), None)
-			# If parent is founded
-			if lParent is not None:
-				lCategory.nameEn = ""
-				lParent.children.add(lCategory)
-				lParent.save()
-			else:
-				logger.error("[Category] Impossible to find the parent of {}-{}".format(lId, lCategory.nameFr))
-
-	logger.debug("[Category] Conversion done")
-
-
-def reset_category_useless_data():
+	""" Association parent-children """
 	for lCategory in Category.objects.all():
-		lCategory.nameEn = ""
-		lCategory.save()
+		lOldId    = int(lCategory.nameEn)
+		lParentId = int(lCategory.resumeFr)
+		if lParentId != 0:
+			lParent = Category.objects.filter(nameEn=lOldId)
+			# If a parent is found
+			if   len(lParent) == 1:
+				lCategory.set_parent(lParent[0], account)
+			# If no parent are founded, deactivated the category
+			elif len(lParent) == 0:
+				lCategory.change_display(False, account, "No parent founded")
+			# If many parents are founded, deactivated the category
+			else:
+				lCategory.change_display(False, account, "Find {} parents".format(len(lParent)))
+
+	return True
+
+
+""" ---------------------------------------------------------------------------------------------------------------- """
+def reset_category_model(account: AccountAdmin):
+	for lCategory in Category.objects.all():
+		lCategory.nameEn   = ""
+		lCategory.resumeFr = ""
+		lCategory.modification(account, "Remove useless data")

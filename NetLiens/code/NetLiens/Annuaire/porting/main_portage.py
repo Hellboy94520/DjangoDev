@@ -1,10 +1,11 @@
-from ..models import create_account_admin, AccountAdmin
-from ..models.localisation import Localisation, modif_localisation
-from django.contrib.auth.models import User
+from ..models.account import AccountAdmin, User
+from ..models.localisation import Localisation
+from ..models.category import Category
 import logging
-from ..porting.category_portage     import create_category_models, reset_category_useless_data
-from ..porting.localisation_portage import create_localisation_models, create_localisation_association, \
-	reset_localisation_useless_data
+
+from .category_portage import create_category_models, reset_category_model
+from .localisation_portage import create_localisation_models
+
 import mysql.connector
 from mysql.connector import Error
 import configparser
@@ -18,9 +19,13 @@ logger = logging.getLogger(__name__)
 AccountAdmin
 ------------------------------------------------------------------------------------------------------------------ """
 def create_portageaccount():
-	lUser = User.objects.filter(username="Portage")
-	if len(lUser) > 0: return AccountAdmin.objects.filter(user=lUser[0])[0]
-	else: return create_account_admin("Portage", "", "", "portage@netliens.com", "toto", True)
+	lAccount = AccountAdmin()
+	lAccount.create(username    = "Porting",
+	                email       = "alexandre.delahaye@free.fr",
+	                password    = "toto",
+	                first_name  = "Alex",
+	                last_name   = "Delahaye")
+	return lAccount
 
 
 def launch_conversion():
@@ -34,25 +39,36 @@ def launch_conversion():
 	logging.info("[Portage] Starting SqlClient...")
 
 	try:
-		lSqlClient = mysql.connector.connect(host=settings.get('sql_localhost', 'address'),
-		                                     user=settings.get('sql_localhost', 'user'),
-		                                     password=settings.get('sql_localhost', 'password'),
-		                                     database=settings.get('sql_localhost', 'databasename'))
+		lSqlClient = mysql.connector.connect(host=settings.get('sql_netLiens', 'address'),
+		                                     user=settings.get('sql_netLiens', 'user'),
+		                                     password=settings.get('sql_netLiens', 'password'),
+		                                     database=settings.get('sql_netLiens', 'databasename'))
 	except Error as e:
 		logging.critical("[SqlClient] Connection cannot be established {}".format(e))
 	else:
 		lSqlCursor = lSqlClient.cursor()
 
-		# Creation of the data
+		# Creation of the AdminAccount
 		lPortageAccount = create_portageaccount()
-		create_category_models(lSqlCursor, lPortageAccount)
-		if create_localisation_models(lPortageAccount):
-			create_localisation_association(lSqlCursor, lPortageAccount)
+
+		# Creation of the Category
+		# create_category_models(lSqlCursor, lPortageAccount)
+
+		# Creation of the Localisation
+		create_localisation_models(settings, lPortageAccount, lSqlCursor)
+
+		# # Creation of the localisation
+		# if create_localisation_models(lPortageAccount):
+		# 	create_localisation_association(lSqlCursor, lPortageAccount)
+		#
+		# # Creation of the site
+		# create_site_models(lSqlCursor, lPortageAccount)
+
 		lSqlClient.close()
 
 		# Reset useless category data contain in ResumeEn
-		reset_category_useless_data()
-		reset_localisation_useless_data()
+		reset_category_model(lPortageAccount)
+		# reset_localisation_useless_data()
 
 	logging.info("[SqlClient] Connection is closed")
 	logging.info("[Portage] Done")
