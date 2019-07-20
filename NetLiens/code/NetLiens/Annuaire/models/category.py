@@ -2,7 +2,6 @@ from django.db import models
 from datetime import datetime
 from .account import User, AccountAdmin
 from .stat import Stat
-from .site import Site
 from enum import Enum
 
 """ --------------------------------------------------------------------------------------------------------------------
@@ -173,7 +172,6 @@ class CategoryEventCreationRequest(models.Model):
   date     = models.DateTimeField(default=datetime.now())
   saw      = models.BooleanField(default=False)
   user     = models.ForeignKey(User, on_delete=models.CASCADE)
-  site     = models.ForeignKey(Site, on_delete=models.CASCADE)
   category = models.ForeignKey(Category, on_delete=models.CASCADE)
 
   """ ---------------------------------------------------- """
