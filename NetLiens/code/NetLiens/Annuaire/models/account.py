@@ -75,7 +75,7 @@ class AccountValid(Account):
   objects = None
 
   """ ---------------------------------------------------- """
-  def create(self, username: str, first_name: str, last_name: str, email: str, password: str):
+  def create(self, username: str, first_name: str, last_name: str, email: str, password: str, account: AccountAdmin):
     self.user = User.objects.create_user(username     = username,
                                          email        = email,
                                          password     = password,
@@ -96,9 +96,22 @@ class AccountValid(Account):
 class AccountCustomer(Account):
   objects = None
   company = models.CharField(max_length=50)
+  # Total quantity of NL link to account
+  level01       = models.PositiveSmallIntegerField(default=0)
+  level02       = models.PositiveSmallIntegerField(default=0)
+  level03       = models.PositiveSmallIntegerField(default=0)
+  level04       = models.PositiveSmallIntegerField(default=0)
+  level05       = models.PositiveSmallIntegerField(default=0)
+  level06       = models.PositiveSmallIntegerField(default=0)
+  level07       = models.PositiveSmallIntegerField(default=0)
+  level08       = models.PositiveSmallIntegerField(default=0)
+  level09       = models.PositiveSmallIntegerField(default=0)
+  level10       = models.PositiveSmallIntegerField(default=0)
+
 
   """ ---------------------------------------------------- """
-  def create(self, username: str, first_name: str, last_name: str, email: str, password: str, company: str):
+  def create(self, username: str, first_name: str, last_name: str, email: str, password: str, company: str,
+             account: AccountAdmin):
     self.user = User.objects.create_user(username     = username,
                                          email        = email,
                                          password     = password,
@@ -120,7 +133,11 @@ class AccountCustomer(Account):
       .format(self.user.username, self.user.last_name, self.user.first_name, self.user.email, self.company)
 
 
-""" ---------------------------------------------------------------------------------------------------------------- """
+""" --------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+Class Activation
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------- """
 class AccountActivation(models.Model):
   objects = None
   link          = models.SlugField(default=uuid4(), max_length=20, unique=True)
@@ -130,7 +147,6 @@ class AccountActivation(models.Model):
   """ ---------------------------------------------------- """
   def create(self):
     self.save()
-    
 
   """ ---------------------------------------------------- """
   def __repr__(self):

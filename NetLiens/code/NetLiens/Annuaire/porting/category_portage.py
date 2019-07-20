@@ -1,6 +1,10 @@
-from ..models.account import AccountAdmin, User
+from ..models.account import AccountAdmin
 from ..models.category import Category
 
+""" --------------------------------------------------------------------------------------------------------------------
+Data
+-------------------------------------------------------------------------------------------------------------------- """
+_equivLoc = {}
 
 """ ------------------------------------------------------------------------------------------------------------------
 Category
@@ -14,26 +18,19 @@ def create_category_models(pSqlCursor, account: AccountAdmin):
 
 		# Save temporarely oldId in nameEn and parentId in resumeFr
 		lCategory = Category(nameFr   = sName,
-		                     nameEn   = str(sId),
 		                     resumeFr = str(sParent),
 		                     display  = sShow)
 		lCategory.create(account)
+		_equivLoc[sId] = CategoryPorting(sqlId=sId, sqlIdParent=sParent, category=lCategory)
 
 	""" Association parent-children """
-	for lCategory in Category.objects.all():
-		lOldId    = int(lCategory.nameEn)
-		lParentId = int(lCategory.resumeFr)
-		if lParentId != 0:
-			lParent = Category.objects.filter(nameEn=lOldId)
-			# If a parent is found
-			if   len(lParent) == 1:
-				lCategory.set_parent(lParent[0], account)
-			# If no parent are founded, deactivated the category
-			elif len(lParent) == 0:
-				lCategory.change_display(False, account, "No parent founded")
-			# If many parents are founded, deactivated the category
+	for sId, sCategoryPorting in _equivLoc.items():
+		if sCategoryPorting.sqlIdParent != 0:
+			lParent = _equivLoc.get(sCategoryPorting.sqlIdParent, None)
+			if lParent is not None:
+				sCategoryPorting.category.set_parent(lParent, account)
 			else:
-				lCategory.change_display(False, account, "Find {} parents".format(len(lParent)))
+				sCategoryPorting.category.change_display(False, account, "No parent founded")
 
 	return True
 
@@ -44,3 +41,13 @@ def reset_category_model(account: AccountAdmin):
 		lCategory.nameEn   = ""
 		lCategory.resumeFr = ""
 		lCategory.modification(account, "Remove useless data")
+
+
+""" ------------------------------------------------------------------------------------------------------------------
+CategoryPorting
+------------------------------------------------------------------------------------------------------------------ """
+class CategoryPorting:
+	def __init__(self, sqlId: int, sqlIdParent: int, category: Category):
+		self.sqlId        = sqlId
+		self.sqlIdParent  = sqlIdParent
+		self.category     = category

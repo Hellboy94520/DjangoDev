@@ -104,8 +104,6 @@ class Category(models.Model):
                                details  = lDetails)
     lCategoryLog.save()
 
-
-
   """ ---------------------------------------------------- """
   # TODO: When Site will be create add site in parameter
   # def request_creation(self, user: User, pSite: Site, details=""):
