@@ -4,7 +4,7 @@ from ..models.category import Category
 """ --------------------------------------------------------------------------------------------------------------------
 Data
 -------------------------------------------------------------------------------------------------------------------- """
-_equivCat = {}
+_equivLoc = {}
 
 """ ------------------------------------------------------------------------------------------------------------------
 Category
@@ -21,18 +21,26 @@ def create_category_models(pSqlCursor, account: AccountAdmin):
 		                     resumeFr = str(sParent),
 		                     display  = sShow)
 		lCategory.create(account)
-		_equivCat[sId] = CategoryPorting(sqlId=sId, sqlIdParent=sParent, category=lCategory)
+		_equivLoc[sId] = CategoryPorting(sqlId=sId, sqlIdParent=sParent, category=lCategory)
 
 	""" Association parent-children """
-	for sId, sCategoryPorting in _equivCat.items():
+	for sId, sCategoryPorting in _equivLoc.items():
 		if sCategoryPorting.sqlIdParent != 0:
-			lParent = _equivCat.get(sCategoryPorting.sqlIdParent, None)
+			lParent = _equivLoc.get(sCategoryPorting.sqlIdParent, None)
 			if lParent is not None:
 				sCategoryPorting.category.set_parent(lParent, account)
 			else:
 				sCategoryPorting.category.change_display(False, account, "No parent founded")
 
 	return True
+
+
+""" ---------------------------------------------------------------------------------------------------------------- """
+def reset_category_model(account: AccountAdmin):
+	for lCategory in Category.objects.all():
+		lCategory.nameEn   = ""
+		lCategory.resumeFr = ""
+		lCategory.modification(account, "Remove useless data")
 
 
 """ ------------------------------------------------------------------------------------------------------------------

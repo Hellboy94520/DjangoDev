@@ -108,6 +108,7 @@ class AccountCustomer(Account):
   level09       = models.PositiveSmallIntegerField(default=0)
   level10       = models.PositiveSmallIntegerField(default=0)
 
+
   """ ---------------------------------------------------- """
   def create(self, username: str, first_name: str, last_name: str, email: str, password: str, company: str,
              account: AccountAdmin):

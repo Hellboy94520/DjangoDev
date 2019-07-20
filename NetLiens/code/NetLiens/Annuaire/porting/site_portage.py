@@ -11,7 +11,6 @@ Site
 def create_site_models(pSqlCursor, account: AccountAdmin):
 
 	""" Creation of the site """
-	# Creation of the category
 	pSqlCursor.execute("SELECT * from annu_site")
 	lSqlSite = pSqlCursor.fetchall()
 	for (sId, sName, sUrl, sMail, sPr, sPrDate, sStatus, sDispMode, sRegdate, sValidDate, sDept, sPriority, sIp, sOrigine,

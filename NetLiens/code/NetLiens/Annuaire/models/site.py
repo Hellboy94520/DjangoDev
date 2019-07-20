@@ -66,6 +66,7 @@ class Site(models.Model):
   """ ---------------------------------------------------- """
   def create(self, admin: AccountAdmin):
     # Creation in database
+    self.display
     self.save()
     # Creation of the log
     lDetails = "Creation of " + str(self)
